@@ -1,7 +1,7 @@
 // PokéTracker Service Worker
 // Caches the app shell so it loads fast and works offline
 
-const CACHE = 'poketracker-v1';
+const CACHE = 'poketracker-v2';
 const SHELL = [
   './Pokemon%20Set%20Checklist.html',
   './manifest.json',

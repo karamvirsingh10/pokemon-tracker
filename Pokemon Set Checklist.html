@@ -217,7 +217,7 @@
 <div class="loading-overlay hidden" id="loadingOverlay"><div class="spinner"></div><div class="loading-text" id="loadingText">Loading…</div></div>
 
 <!-- SETUP -->
-<div id="setupScreen" class="setup-screen">
+<div id="setupScreen" class="setup-screen" style="display:none">
   <h1><div class="logo-icon-sm"></div> Poké<em>Tracker</em></h1>
   <p>Connect your Supabase project to permanently cache card data and store your collection. You only need to do this once — credentials are saved in this browser.</p>
   <label>Supabase Project URL</label>
@@ -1401,7 +1401,7 @@ async function handleCSV(ev){
   document.getElementById('uploadStatus').textContent=`✓ ${f.name}`;showPrefetchBtn();hideLoading();
 }
 
-window.addEventListener('DOMContentLoaded',()=>{loadHuntPins();if(getSavedConfig()){document.getElementById('setupScreen').style.display='none';initApp()}});
+window.addEventListener('DOMContentLoaded',()=>{loadHuntPins();document.getElementById('setupScreen').style.display='none';initApp();});
 
 async function refreshSetCatalog(){
   if(!sb){alert('Connect to Supabase first.');return}
