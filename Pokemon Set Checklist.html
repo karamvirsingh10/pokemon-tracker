@@ -393,30 +393,18 @@ const SM={"Ancient Origins":{id:"xy7",total:100,logo:"https://images.pokemontcg.
 let sb=null,ownedCards={},ownedCardsRaw={},globalSetsData=[],lastTab='sets',currentSetData=null,detailFilter='all',cardMemCache={},savedScrollPos=0;
 
 // ========== SUPABASE ==========
-function getSavedConfig(){try{return JSON.parse(localStorage.getItem('poketracker_sb'))}catch{return null}}
+const SUPABASE_URL='https://kdzlzappknzgjzkabyer.supabase.co';
+const SUPABASE_KEY='eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imtkemx6YXBwa256Z2p6a2FieWVyIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NzM1MzAwMDYsImV4cCI6MjA4OTEwNjAwNn0.RuwatY7s4-jiRY5s9WBQvZznVi6qQ00icBgnPC7-FqY';
 
-async function testAndSaveConfig(){
-  const url=document.getElementById('setupUrl').value.trim(),key=document.getElementById('setupKey').value.trim();
-  const errEl=document.getElementById('setupError'),sucEl=document.getElementById('setupSuccess');
-  errEl.style.display='none';sucEl.style.display='none';
-  if(!url||!key){errEl.textContent='Both fields are required.';errEl.style.display='block';return}
-  document.getElementById('setupBtn').disabled=true;
-  try{
-    const client=window.supabase.createClient(url,key);
-    const{error}=await client.from('set_cache').select('set_id').limit(1);
-    if(error)throw new Error(error.message);
-    localStorage.setItem('poketracker_sb',JSON.stringify({url,key}));
-    sucEl.textContent='Connected! Loading app…';sucEl.style.display='block';
-    setTimeout(()=>initApp(),400);
-  }catch(e){errEl.textContent=`Failed: ${e.message}. Run the schema SQL first.`;errEl.style.display='block'}
-  document.getElementById('setupBtn').disabled=false;
+function getSavedConfig(){
+  // Use hardcoded credentials — no setup screen needed
+  return{url:SUPABASE_URL,key:SUPABASE_KEY};
 }
 
 async function initApp(){
-  const cfg=getSavedConfig();if(!cfg)return;
   document.getElementById('setupScreen').style.display='none';
   document.getElementById('appMain').style.display='';
-  sb=window.supabase.createClient(cfg.url,cfg.key);
+  sb=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
   await loadAPISets();
   await loadAllCachedCards();
   showPrefetchBtn();
