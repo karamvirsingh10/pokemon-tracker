@@ -1,0 +1,1447 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>PokéTracker — Set Completion Tracker</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800;900&family=Space+Mono:wght@400;700&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+<style>
+:root{--bg-deep:#0a0a0f;--bg-card:#12121a;--bg-card-hover:#1a1a28;--bg-surface:#16161f;--bg-era:#0e0e16;--text-primary:#e8e6f0;--text-secondary:#8a87a0;--text-muted:#5a576e;--accent:#f0c040;--accent-glow:rgba(240,192,64,0.15);--green:#34d399;--red:#f87171;--radius:12px;--radius-lg:18px;--tr:0.2s cubic-bezier(0.4,0,0.2,1)}
+*{margin:0;padding:0;box-sizing:border-box}body{background:var(--bg-deep);color:var(--text-primary);font-family:'Outfit',sans-serif;min-height:100vh;overflow-x:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:transparent}::-webkit-scrollbar-thumb{background:var(--text-muted);border-radius:3px}
+
+.setup-screen{max-width:520px;margin:80px auto;padding:0 24px}
+.setup-screen h1{font-size:28px;font-weight:900;margin-bottom:8px;display:flex;align-items:center;gap:12px}
+.setup-screen h1 em{font-style:normal;color:var(--accent)}
+.setup-screen p{color:var(--text-secondary);font-size:14px;line-height:1.6;margin-bottom:24px}
+.setup-screen label{display:block;font-weight:600;font-size:13px;color:var(--text-secondary);margin-bottom:6px;margin-top:16px}
+.setup-screen input{width:100%;background:var(--bg-surface);border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius);padding:12px 16px;font-family:'Outfit',sans-serif;font-size:14px;color:var(--text-primary);outline:none}
+.setup-screen input:focus{border-color:rgba(240,192,64,0.3)}.setup-screen input::placeholder{color:var(--text-muted)}
+.setup-btn{width:100%;margin-top:24px;padding:14px;border-radius:var(--radius);border:none;background:var(--accent);color:var(--bg-deep);font-family:'Outfit',sans-serif;font-weight:700;font-size:15px;cursor:pointer;transition:var(--tr)}
+.setup-btn:hover{filter:brightness(1.1)}.setup-btn:disabled{opacity:0.4;cursor:not-allowed}
+.setup-error{color:var(--red);font-size:13px;margin-top:12px;display:none}
+.setup-success{color:var(--green);font-size:13px;margin-top:12px;display:none}
+.setup-note{font-size:12px;color:var(--text-muted);margin-top:16px;line-height:1.5}
+.logo-icon-sm{width:32px;height:32px;border-radius:50%;background:conic-gradient(var(--accent) 0deg,#e74c3c 120deg,#3498db 240deg,var(--accent) 360deg);position:relative;flex-shrink:0}
+.logo-icon-sm::after{content:'';position:absolute;inset:6px;background:var(--bg-deep);border-radius:50%}
+
+.header{position:sticky;top:0;z-index:100;background:rgba(10,10,15,0.85);backdrop-filter:blur(20px);border-bottom:1px solid rgba(240,192,64,0.08);padding:0 24px}
+.header-inner{max-width:1400px;margin:0 auto;display:flex;align-items:center;justify-content:space-between;height:64px}
+.logo{font-weight:900;font-size:22px;letter-spacing:-0.5px;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none}
+.logo em{font-style:normal;color:var(--accent)}
+.logo-icon{width:32px;height:32px;border-radius:50%;background:conic-gradient(var(--accent) 0deg,#e74c3c 120deg,#3498db 240deg,var(--accent) 360deg);position:relative;flex-shrink:0}
+.logo-icon::after{content:'';position:absolute;inset:6px;background:var(--bg-deep);border-radius:50%}
+.tabs{display:flex;gap:4px;background:var(--bg-surface);border-radius:10px;padding:3px}
+.tab{padding:8px 20px;border-radius:8px;border:none;background:transparent;color:var(--text-secondary);font-family:'Outfit',sans-serif;font-weight:500;font-size:14px;cursor:pointer;transition:var(--tr)}
+.tab:hover{color:var(--text-primary)}.tab.active{background:var(--accent);color:var(--bg-deep);font-weight:600}
+
+.upload-section{max-width:1400px;margin:0 auto;padding:24px 24px 0}
+.upload-bar{display:flex;align-items:center;gap:16px;background:var(--bg-surface);border:1px dashed rgba(240,192,64,0.2);border-radius:var(--radius);padding:14px 20px;transition:var(--tr)}
+.upload-bar:hover{border-color:rgba(240,192,64,0.4)}
+.upload-bar label{display:flex;align-items:center;gap:8px;font-weight:600;font-size:14px;color:var(--accent);cursor:pointer;white-space:nowrap}
+.upload-bar input[type="file"]{display:none}
+.upload-status{font-size:13px;color:var(--text-secondary)}.upload-stats{margin-left:auto;display:flex;gap:20px;flex-wrap:wrap}
+.stat{font-family:'Space Mono',monospace;font-size:13px;color:var(--text-secondary);white-space:nowrap}.stat strong{color:var(--accent)}
+
+.search-row{max-width:1400px;margin:0 auto;padding:16px 24px;display:flex;gap:12px;align-items:center}
+.search-input{flex:1;background:var(--bg-surface);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius);padding:10px 16px;font-family:'Outfit',sans-serif;font-size:14px;color:var(--text-primary);outline:none;transition:var(--tr)}
+.search-input:focus{border-color:rgba(240,192,64,0.3)}.search-input::placeholder{color:var(--text-muted)}
+.sort-select{background:var(--bg-surface);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius);padding:10px 14px;color:var(--text-secondary);font-family:'Outfit',sans-serif;font-size:13px;cursor:pointer;outline:none}
+.sort-select option{background:var(--bg-surface)}
+
+.main{max-width:1400px;margin:0 auto;padding:0 24px 40px}
+
+.era-group{margin-bottom:32px}
+.era-header{display:flex;align-items:center;gap:14px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.04)}
+.era-color{width:4px;height:32px;border-radius:2px;flex-shrink:0}
+.era-name{font-weight:800;font-size:18px;letter-spacing:-0.3px}
+.era-stats{margin-left:auto;display:flex;align-items:center;gap:16px}
+.era-stats-text{font-family:'Space Mono',monospace;font-size:12px;color:var(--text-secondary)}
+.era-bar{width:120px;height:6px;background:rgba(255,255,255,0.06);border-radius:3px;overflow:hidden}
+.era-bar-fill{height:100%;border-radius:3px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.era-pct{font-family:'Space Mono',monospace;font-weight:700;font-size:14px;min-width:42px;text-align:right}
+
+.set-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(190px,1fr));gap:14px}
+.set-tile{background:var(--bg-card);border:1px solid rgba(255,255,255,0.04);border-radius:var(--radius-lg);padding:18px 14px 14px;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);display:flex;flex-direction:column;align-items:center;text-align:center;position:relative;overflow:hidden}
+.set-tile::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse at top,var(--accent-glow),transparent 70%);opacity:0;transition:opacity .3s}
+.set-tile:hover{transform:translateY(-4px);border-color:rgba(240,192,64,0.15);box-shadow:0 12px 40px rgba(0,0,0,0.4)}
+.set-tile:hover::before{opacity:1}
+.set-tile-logo{width:120px;height:65px;object-fit:contain;margin-bottom:10px;position:relative;z-index:1;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.3))}
+.set-tile-logo-placeholder{width:120px;height:65px;display:flex;align-items:center;justify-content:center;margin-bottom:10px;position:relative;z-index:1;font-size:32px;opacity:0.3}
+.set-tile-name{font-weight:600;font-size:12px;line-height:1.3;margin-bottom:8px;position:relative;z-index:1;min-height:32px;display:flex;align-items:center}
+.set-tile-bar{width:100%;height:4px;background:rgba(255,255,255,0.06);border-radius:2px;overflow:hidden;margin-bottom:6px;position:relative;z-index:1}
+.set-tile-bar-fill{height:100%;border-radius:2px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.set-tile-stats{font-family:'Space Mono',monospace;font-size:10px;color:var(--text-secondary);position:relative;z-index:1}
+.set-tile-pct{font-family:'Space Mono',monospace;font-weight:700;font-size:18px;position:relative;z-index:1;margin-bottom:3px}
+
+.completion-view{display:none}
+.completion-table{width:100%;border-collapse:collapse}
+.completion-table th{text-align:left;padding:12px 16px;font-weight:600;font-size:12px;text-transform:uppercase;letter-spacing:1px;color:var(--text-muted);border-bottom:1px solid rgba(255,255,255,0.06)}
+.completion-table td{padding:12px 16px;font-size:14px;border-bottom:1px solid rgba(255,255,255,0.03);vertical-align:middle}
+.completion-table tr{cursor:pointer;transition:var(--tr)}.completion-table tbody tr:hover{background:var(--bg-card-hover)}
+.completion-bar-cell{width:200px}
+.completion-bar-track{width:100%;height:8px;background:rgba(255,255,255,0.06);border-radius:4px;overflow:hidden}
+.completion-bar-fill{height:100%;border-radius:4px;transition:width .6s cubic-bezier(.4,0,.2,1)}
+.completion-pct{font-family:'Space Mono',monospace;font-weight:700;min-width:56px;text-align:right}
+.completion-era-row td{font-weight:700;font-size:13px;text-transform:uppercase;letter-spacing:0.5px;color:var(--text-muted);background:var(--bg-era);cursor:default!important}
+.completion-era-row:hover{background:var(--bg-era)!important}
+
+.set-detail{display:none}
+.set-detail-header{display:flex;align-items:center;gap:20px;margin-bottom:8px;flex-wrap:wrap}
+.back-btn{display:flex;align-items:center;gap:6px;background:var(--bg-surface);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius);padding:8px 16px;color:var(--text-secondary);font-family:'Outfit',sans-serif;font-size:13px;cursor:pointer;transition:var(--tr)}
+.back-btn:hover{color:var(--text-primary);border-color:rgba(240,192,64,0.2)}
+.set-detail-logo{height:50px;object-fit:contain;filter:drop-shadow(0 2px 8px rgba(0,0,0,0.3))}
+.set-detail-title{font-weight:800;font-size:24px;flex:1;min-width:150px}
+.set-detail-info{display:flex;gap:24px;font-size:14px;color:var(--text-secondary)}
+.set-detail-info strong{color:var(--accent);font-family:'Space Mono',monospace}
+.detail-filters{display:flex;gap:8px;margin-bottom:20px;flex-wrap:wrap;padding-top:12px}
+.pill{padding:6px 14px;border-radius:20px;border:1px solid rgba(255,255,255,0.08);background:transparent;color:var(--text-secondary);font-family:'Outfit',sans-serif;font-size:12px;font-weight:500;cursor:pointer;transition:var(--tr)}
+.pill:hover{border-color:rgba(240,192,64,0.2);color:var(--text-primary)}
+.pill.active{border-color:var(--accent);color:var(--accent);background:var(--accent-glow)}
+
+.card-grid{display:flex;flex-wrap:wrap;gap:24px;justify-content:center}
+.binder-page{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;background:var(--bg-surface);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-lg);padding:14px;width:100%;max-width:720px}
+.binder-page-label{grid-column:1/-1;text-align:center;font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted);padding:2px 0 6px;border-bottom:1px solid rgba(255,255,255,0.04);margin-bottom:4px}
+.card-item{border-radius:8px;overflow:hidden;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative;background:var(--bg-card)}
+.card-item.owned{opacity:.55;filter:saturate(.2) brightness(.8)}
+.card-item.owned::after{content:'✓';position:absolute;top:8px;right:8px;width:26px;height:26px;border-radius:50%;background:var(--green);color:var(--bg-deep);font-size:14px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2}
+.card-item.missing{box-shadow:0 0 0 2px rgba(240,192,64,0.4),0 4px 20px rgba(240,192,64,0.08)}
+.card-item.missing:hover{transform:translateY(-4px) scale(1.02);box-shadow:0 0 0 2px var(--accent),0 12px 40px rgba(240,192,64,0.2)}
+.card-img{width:100%;aspect-ratio:2.5/3.5;object-fit:cover;display:block;background:var(--bg-surface)}
+.card-img-placeholder{width:100%;aspect-ratio:2.5/3.5;display:flex;align-items:center;justify-content:center;background:var(--bg-surface);flex-direction:column;gap:8px;padding:12px}
+.card-img-placeholder .cp-name{font-weight:700;font-size:14px;text-align:center;line-height:1.3}
+.card-img-placeholder .cp-num{font-family:'Space Mono',monospace;font-size:12px;color:var(--text-muted)}
+.card-number-tag{position:absolute;top:0;left:0;padding:4px 9px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--text-primary);background:rgba(10,10,15,0.85);border-radius:0 0 8px 0;z-index:2}
+.card-item.owned .card-number-tag{color:var(--text-secondary)}
+.card-info{padding:8px 10px;font-size:13px;background:linear-gradient(to top,var(--bg-card),rgba(18,18,26,0.9));position:absolute;bottom:0;left:0;right:0;transform:translateY(0);z-index:1}
+.card-info .card-name{font-weight:700;font-size:13px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;color:var(--text-primary)}
+.card-info .card-num{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-secondary);margin-top:2px}
+
+.loading-overlay{position:fixed;inset:0;z-index:999;background:rgba(10,10,15,0.92);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:20px}
+.loading-overlay.hidden{display:none}
+.spinner{width:48px;height:48px;border-radius:50%;border:3px solid rgba(240,192,64,0.15);border-top-color:var(--accent);animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-text{color:var(--text-secondary);font-size:14px;text-align:center}
+.empty-state{text-align:center;padding:80px 20px}
+.empty-state-icon{font-size:64px;margin-bottom:16px;opacity:0.4}
+.empty-state-title{font-weight:700;font-size:20px;margin-bottom:8px}
+.empty-state-sub{color:var(--text-secondary);font-size:14px;max-width:420px;margin:0 auto;line-height:1.6}
+.api-note{max-width:1400px;margin:0 auto;padding:12px 24px;font-size:12px;color:var(--text-muted);text-align:center}
+.api-note a{color:var(--accent);text-decoration:none}
+
+.card-price{position:absolute;bottom:38px;left:0;right:0;padding:3px 8px;font-family:'Space Mono',monospace;font-size:11px;color:var(--green);background:rgba(10,10,15,0.75);text-align:right;z-index:1;pointer-events:none}
+.card-item.owned .card-price{color:var(--text-muted)}
+
+.detail-value-row{display:flex;gap:16px;margin-bottom:16px;flex-wrap:wrap}
+.detail-value-card{background:var(--bg-surface);border:1px solid rgba(255,255,255,0.04);border-radius:var(--radius);padding:12px 16px;flex:1;min-width:140px}
+.detail-value-card .dv-label{font-size:11px;color:var(--text-muted);text-transform:uppercase;letter-spacing:0.5px;margin-bottom:4px}
+.detail-value-card .dv-val{font-family:'Space Mono',monospace;font-size:18px;font-weight:700}
+
+
+.detail-sort-row{display:flex;gap:8px;align-items:center;margin-bottom:16px}
+.detail-sort-select{background:var(--bg-surface);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius);padding:6px 10px;color:var(--text-secondary);font-family:'Outfit',sans-serif;font-size:12px;cursor:pointer;outline:none}
+.detail-sort-select option{background:var(--bg-surface)}
+
+/* Hunt tab */
+.hunt-view{padding-top:16px}
+.hunt-filter-bar{display:flex;gap:12px;align-items:flex-end;flex-wrap:wrap;background:var(--bg-surface);border:1px solid rgba(255,255,255,0.06);border-radius:var(--radius-lg);padding:16px 20px;margin-bottom:24px}
+.hunt-filter-group{display:flex;flex-direction:column;gap:5px;flex:1;min-width:140px}
+.hunt-filter-status-group{min-width:130px;max-width:160px}
+.hunt-filter-label{font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:0.6px;color:var(--text-muted)}
+.hunt-select{background:var(--bg-card);border:1px solid rgba(255,255,255,0.08);border-radius:var(--radius);padding:10px 14px;font-family:'Outfit',sans-serif;font-size:13px;color:var(--text-primary);cursor:pointer;outline:none;transition:var(--tr);width:100%}
+.hunt-select:focus{border-color:rgba(240,192,64,0.35)}
+.hunt-select option{background:var(--bg-card)}
+.hunt-btn{padding:10px 28px;border-radius:var(--radius);border:none;background:var(--accent);color:var(--bg-deep);font-family:'Outfit',sans-serif;font-weight:700;font-size:14px;cursor:pointer;transition:var(--tr);white-space:nowrap;align-self:flex-end;flex-shrink:0}
+.hunt-btn:hover{filter:brightness(1.1)}
+
+/* Section headers */
+.hunt-section-header{display:flex;align-items:center;gap:12px;margin-bottom:16px;padding-bottom:10px;border-bottom:1px solid rgba(255,255,255,0.05)}
+.hunt-section-title{font-weight:700;font-size:15px}
+.hunt-results-count{font-family:'Space Mono',monospace;font-size:11px;color:var(--accent);background:var(--accent-glow);padding:2px 10px;border-radius:10px;margin-left:auto}
+.hunt-clear-pins-btn{margin-left:auto;padding:4px 12px;border-radius:8px;border:1px solid rgba(255,100,100,0.25);background:transparent;color:var(--red);font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;cursor:pointer;transition:var(--tr)}
+.hunt-clear-pins-btn:hover{background:rgba(248,113,113,0.1)}
+#huntPinnedSection{margin-bottom:32px}
+#huntResultsSection{margin-bottom:32px}
+
+/* Card grid — big tiles */
+.hunt-card-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:16px}
+.hunt-card-tile{background:var(--bg-card);border:1px solid rgba(255,255,255,0.05);border-radius:var(--radius-lg);overflow:hidden;cursor:pointer;transition:all .3s cubic-bezier(.4,0,.2,1);position:relative;display:flex;flex-direction:column}
+.hunt-card-tile:hover{transform:translateY(-3px);border-color:rgba(240,192,64,0.2);box-shadow:0 8px 30px rgba(0,0,0,0.4)}
+.hunt-card-tile.is-owned{opacity:.55;filter:saturate(.2) brightness(.8)}
+.hunt-card-tile.is-pinned{border-color:rgba(240,192,64,0.5);box-shadow:0 0 0 1px rgba(240,192,64,0.25),0 4px 20px rgba(240,192,64,0.1)}
+.hunt-tile-img-wrap{position:relative;width:100%;aspect-ratio:2.5/3.5;overflow:hidden;background:var(--bg-surface)}
+.hunt-tile-img{width:100%;height:100%;object-fit:cover;display:block}
+.hunt-tile-img-ph{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:6px;padding:12px;text-align:center}
+.hunt-tile-img-ph .ph-name{font-weight:700;font-size:13px;line-height:1.3}
+.hunt-tile-img-ph .ph-num{font-family:'Space Mono',monospace;font-size:11px;color:var(--text-muted)}
+.hunt-tile-num-tag{position:absolute;top:0;left:0;padding:4px 9px;font-family:'Space Mono',monospace;font-size:11px;font-weight:700;color:var(--text-primary);background:rgba(10,10,15,0.85);border-radius:0 0 8px 0;z-index:2}
+.hunt-tile-owned-badge{position:absolute;top:8px;right:8px;width:24px;height:24px;border-radius:50%;background:var(--green);color:var(--bg-deep);font-size:13px;font-weight:700;display:flex;align-items:center;justify-content:center;z-index:2}
+.hunt-pin-btn{position:absolute;bottom:8px;right:8px;width:28px;height:28px;border-radius:50%;border:none;background:rgba(10,10,15,0.75);color:var(--text-muted);font-size:14px;cursor:pointer;display:flex;align-items:center;justify-content:center;z-index:3;transition:var(--tr);backdrop-filter:blur(4px)}
+.hunt-pin-btn:hover{background:rgba(240,192,64,0.2);color:var(--accent)}
+.hunt-pin-btn.pinned{background:rgba(240,192,64,0.25);color:var(--accent)}
+.hunt-tile-info{padding:10px 10px 12px;flex:1;display:flex;flex-direction:column;gap:3px}
+.hunt-tile-name{font-weight:700;font-size:13px;line-height:1.3;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hunt-tile-set{font-size:10px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hunt-tile-rarity{font-size:10px;font-weight:600;color:var(--accent);margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.hunt-tile-price{font-family:'Space Mono',monospace;font-size:11px;color:var(--green);margin-top:auto;padding-top:4px}
+.hunt-tile-tcg-btn{display:block;margin-top:8px;padding:6px 0;text-align:center;border-radius:8px;border:1px solid rgba(240,192,64,0.25);background:rgba(240,192,64,0.06);color:var(--accent);font-family:'Outfit',sans-serif;font-size:11px;font-weight:600;text-decoration:none;transition:var(--tr)}
+.hunt-tile-tcg-btn:hover{background:rgba(240,192,64,0.14);border-color:rgba(240,192,64,0.5)}
+
+/* Empty / placeholder */
+.hunt-empty{text-align:center;padding:56px 20px;color:var(--text-muted)}
+.hunt-empty-icon{font-size:52px;margin-bottom:14px;opacity:0.35}
+.hunt-empty-title{font-weight:700;font-size:17px;margin-bottom:8px;color:var(--text-secondary)}
+.hunt-empty-sub{font-size:13px;line-height:1.7;max-width:380px;margin:0 auto}
+
+@media(max-width:768px){
+  .set-grid{grid-template-columns:repeat(auto-fill,minmax(145px,1fr))}.binder-page{max-width:100%;padding:8px;gap:5px}
+  .header-inner{flex-wrap:wrap;height:auto;padding:12px 0;gap:8px}.set-detail-header{flex-direction:column;align-items:flex-start}
+  .set-detail-info{margin-left:0}.upload-bar{flex-wrap:wrap}.upload-stats{margin-left:0;width:100%}
+  .completion-bar-cell{display:none}.era-stats{display:none}
+  .detail-value-row{gap:8px}
+  .card-info .card-name{font-size:11px}.card-info .card-num{font-size:10px}.card-number-tag{font-size:10px;padding:3px 7px}
+}
+</style>
+</head>
+<body>
+<div class="loading-overlay hidden" id="loadingOverlay"><div class="spinner"></div><div class="loading-text" id="loadingText">Loading…</div></div>
+
+<!-- SETUP -->
+<div id="setupScreen" class="setup-screen">
+  <h1><div class="logo-icon-sm"></div> Poké<em>Tracker</em></h1>
+  <p>Connect your Supabase project to permanently cache card data and store your collection. You only need to do this once — credentials are saved in this browser.</p>
+  <label>Supabase Project URL</label>
+  <input type="text" id="setupUrl" placeholder="https://abcdefg.supabase.co">
+  <label>Supabase Anon (Public) Key</label>
+  <input type="text" id="setupKey" placeholder="eyJhbGciOiJIUzI1NiIs...">
+  <button class="setup-btn" id="setupBtn" onclick="testAndSaveConfig()">Connect &amp; Start</button>
+  <div class="setup-error" id="setupError"></div>
+  <div class="setup-success" id="setupSuccess"></div>
+  <div class="setup-note">Find these in Supabase Dashboard → Settings → API.<br>Run the <strong>supabase-schema.sql</strong> file first in SQL Editor.</div>
+</div>
+
+<!-- APP -->
+<div id="appMain" style="display:none">
+<header class="header"><div class="header-inner">
+  <div class="logo" onclick="showSetsView()"><div class="logo-icon"></div>Poké<em>Tracker</em></div>
+  <div class="tabs">
+    <button class="tab active" data-view="sets" onclick="switchTab('sets')">Sets</button>
+    <button class="tab" data-view="completion" onclick="switchTab('completion')">Completion</button>
+    <button class="tab" data-view="hunt" onclick="switchTab('hunt')">Hunt</button>
+  </div>
+</div></header>
+
+<div class="upload-section"><div class="upload-bar">
+  <label><svg width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 14v1a2 2 0 002 2h8a2 2 0 002-2v-1M9 11V3m0 0L5.5 6.5M9 3l3.5 3.5"/></svg>Upload CSV<input type="file" id="csvInput" accept=".csv" onchange="handleCSV(event)"></label>
+  <span class="upload-status" id="uploadStatus">Loading…</span>
+  <button id="prefetchBtn" onclick="prefetchAllCards()" style="display:none;padding:8px 16px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);font-family:'Outfit',sans-serif;font-size:12px;font-weight:600;cursor:pointer;white-space:nowrap;transition:var(--tr)">⬇ Cache All Cards</button>
+  <span id="prefetchStatus" style="display:none;font-size:11px;color:var(--text-muted);white-space:nowrap"></span>
+  <div class="upload-stats" id="uploadStats" style="display:none">
+    <span class="stat">Sets: <strong id="statSets">0</strong></span>
+    <span class="stat">Owned: <strong id="statOwned">0</strong></span>
+    <span class="stat">Total: <strong id="statTotal">0</strong></span>
+    <span class="stat">Overall: <strong id="statPct">0%</strong></span>
+  </div>
+</div></div>
+
+<div class="search-row" id="searchRow" style="display:none">
+  <input class="search-input" type="text" placeholder="Search sets…" id="searchInput" oninput="filterSets()">
+  <select class="sort-select" id="sortSelect" onchange="filterSets()">
+    <option value="era">Group by Era</option>
+    <option value="name-asc">Name A→Z</option>
+    <option value="pct-desc">Completion ↓</option>
+    <option value="pct-asc">Completion ↑</option>
+    <option value="missing-desc">Most Needed</option>
+  </select>
+</div>
+
+<div class="main">
+  <div id="setsView">
+    <div class="empty-state" id="emptyState"><div class="empty-state-icon">🃏</div><div class="empty-state-title">Upload your collection</div><div class="empty-state-sub">Upload a CSV export to start tracking set completion. Your collection is stored permanently in Supabase.</div></div>
+    <div id="setGridContainer"></div>
+  </div>
+  <div class="completion-view" id="completionView">
+    <table class="completion-table"><thead><tr><th>Era</th><th>Set Name</th><th>Total Cards</th><th>Owned</th><th>Missing</th><th>Progress</th><th style="text-align:right">%</th></tr></thead><tbody id="completionBody"></tbody></table>
+  </div>
+  <div class="hunt-view" id="huntView" style="display:none">
+    <div class="hunt-filter-bar">
+      <div class="hunt-filter-group">
+        <label class="hunt-filter-label">Era</label>
+        <select class="hunt-select" id="huntEraSelect" onchange="onHuntEraChange()">
+          <option value="">All Eras</option>
+        </select>
+      </div>
+      <div class="hunt-filter-group">
+        <label class="hunt-filter-label">Set</label>
+        <select class="hunt-select" id="huntSetSelect" onchange="onHuntSetChange()">
+          <option value="">All Sets</option>
+        </select>
+      </div>
+      <div class="hunt-filter-group">
+        <label class="hunt-filter-label">Rarity</label>
+        <select class="hunt-select" id="huntRaritySelect">
+          <option value="">All Rarities</option>
+        </select>
+      </div>
+      <div class="hunt-filter-group hunt-filter-status-group">
+        <label class="hunt-filter-label">Status</label>
+        <select class="hunt-select" id="huntStatusSelect">
+          <option value="missing">Missing Only</option>
+          <option value="all">All Cards</option>
+          <option value="owned">Owned Only</option>
+          <option value="pinned">📌 Pinned</option>
+        </select>
+      </div>
+      <button class="hunt-btn" onclick="runHunt()">Search</button>
+    </div>
+    <!-- Pinned cards section -->
+    <div id="huntPinnedSection" style="display:none">
+      <div class="hunt-section-header">
+        <span class="hunt-section-title">📌 Pinned Cards</span>
+        <button class="hunt-clear-pins-btn" onclick="clearAllPins()">Clear all</button>
+      </div>
+      <div class="hunt-card-grid" id="huntPinnedGrid"></div>
+    </div>
+    <!-- Results section -->
+    <div id="huntResultsSection" style="display:none">
+      <div class="hunt-section-header">
+        <span class="hunt-section-title" id="huntResultsTitle">Results</span>
+        <span class="hunt-results-count" id="huntResultsCount"></span>
+      </div>
+      <div class="hunt-card-grid" id="huntResultsGrid"></div>
+    </div>
+    <div id="huntEmptyState" class="hunt-empty" style="display:none">
+      <div class="hunt-empty-icon">🔍</div>
+      <div class="hunt-empty-title">No cards found</div>
+      <div class="hunt-empty-sub">Try adjusting your filters above.</div>
+    </div>
+    <div id="huntPlaceholder" class="hunt-empty">
+      <div class="hunt-empty-icon">🎯</div>
+      <div class="hunt-empty-title">Card Hunter</div>
+      <div class="hunt-empty-sub">Select filters above and hit Search to find the cards you're targeting. Pin any card to keep it at the top for easy reference.</div>
+    </div>
+  </div>
+  <div class="set-detail" id="setDetail">
+    <div class="set-detail-header">
+      <button class="back-btn" onclick="goBack()"><svg width="16" height="16" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M10 2L4 8l6 6"/></svg> Back</button>
+      <img class="set-detail-logo" id="detailLogo" src="" alt="">
+      <div class="set-detail-title" id="detailTitle"></div>
+      <div class="set-detail-info"><span>Owned: <strong id="detailOwned">0</strong></span><span>Total: <strong id="detailTotal">0</strong></span><span>Missing: <strong id="detailMissing">0</strong></span></div>
+    </div>
+    <div class="detail-value-row" id="detailValueRow">
+      <div class="detail-value-card"><div class="dv-label">Owned Value</div><div class="dv-val green" id="detailOwnedVal">$0</div></div>
+      <div class="detail-value-card"><div class="dv-label">Missing Value</div><div class="dv-val" style="color:var(--red)" id="detailMissingVal">$0</div></div>
+      <div class="detail-value-card"><div class="dv-label">Set Total Value</div><div class="dv-val" style="color:var(--accent)" id="detailSetVal">$0</div></div>
+    </div>
+    <div class="detail-filters">
+      <button class="pill active" data-filter="all" onclick="setDetailFilter('all',this)">All</button>
+      <button class="pill" data-filter="missing" onclick="setDetailFilter('missing',this)">Missing</button>
+      <button class="pill" data-filter="owned" onclick="setDetailFilter('owned',this)">Owned</button>
+      <span style="margin-left:auto;display:flex;align-items:center;gap:6px;font-size:11px;color:var(--text-muted)">Sort:
+        <select class="detail-sort-select" id="detailSortSelect" onchange="rerenderDetail()">
+          <option value="number">Card Number</option>
+          <option value="price-desc">Price High→Low</option>
+          <option value="price-asc">Price Low→High</option>
+          <option value="name">Name A→Z</option>
+        </select>
+      </span>
+    </div>
+    <div class="card-grid" id="cardGrid"></div>
+  </div>
+</div>
+<div class="api-note">Sets auto-discovered from <a href="https://pokemontcg.io" target="_blank">PokémonTCG API</a> · Prices from TCGPlayer · Cached permanently in Supabase · <a href="#" onclick="event.preventDefault();localStorage.removeItem('poketracker_sb');location.reload()">Reset config</a> · <a href="#" onclick="event.preventDefault();refreshSetCatalog()">Refresh set catalog</a> · <a href="#" onclick="event.preventDefault();resyncCardCache()">Re-sync all card data</a></div>
+</div>
+
+<script>
+// ========== ERAS ==========
+const ERAS=[
+  {name:"Mega Evolution Series",color:"#d63384",years:"2025–Present",sets:["Chaos Rising","Perfect Order","Ascended Heroes","Phantasmal Flames","Mega Evolution Black Star Promos","Mega Evolution"]},
+  {name:"Scarlet & Violet Series",color:"#e74c3c",years:"2023–2025",sets:["White Flare","Black Bolt","Destined Rivals","Journey Together","McDonald's Dragon Discovery","Prismatic Evolutions","Surging Sparks","Stellar Crown","Holiday Calendar 2024","Trick or Trade 2024","Shrouded Fable","Twilight Masquerade","Temporal Forces","Paldean Fates","Paradox Rift","SV: 151","Holiday Calendar 2023","Trick or Trade BOOster Bundle 2023","Trick or Trade 2023","McDonald's Match Battle 2023","Obsidian Flames","Paldea Evolved","Scarlet & Violet Energies","Scarlet & Violet Base Set","Scarlet & Violet Promo"]},
+  {name:"Sword & Shield Series",color:"#3498db",years:"2020–2023",sets:["Crown Zenith","Crown Zenith: Galarian Gallery","Silver Tempest Trainer Gallery","Silver Tempest","Lost Origin","Lost Origin Trainer Gallery","Holiday Calendar 2022","Trick or Trade","McDonald's Match Battle","McDonald's Collection 2022","Pokemon Go","Astral Radiance","Astral Radiance Trainer Gallery","Brilliant Stars","Brilliant Stars Trainer Gallery","Fusion Strike","Celebrations","Celebrations: Classic Collection","Evolving Skies","Chilling Reign","Battle Styles","Shining Fates","Shining Fates: Shiny Vault","McDonald's 25th Anniversary Promos","McDonald's Collection 2021","Vivid Voltage","Champion's Path","Pokemon Futsal Promos","Darkness Ablaze","Rebel Clash","Sword & Shield Base Set","Sword & Shield Promo"]},
+  {name:"Sun & Moon Series",color:"#f39c12",years:"2017–2019",sets:["Cosmic Eclipse","McDonald's Collection 2019","McDonald's Collection 2019 FR","Hidden Fates","Hidden Fates: Shiny Vault","Unified Minds","Unbroken Bonds","Detective Pikachu","Team Up","Lost Thunder","McDonald's Collection 2018","Dragon Majesty","Celestial Storm","Forbidden Light","Ultra Prism","Crimson Invasion","Shining Legends","Burning Shadows","McDonald's Collection 2017","Guardians Rising","Sun & Moon Base Set","Sun & Moon Promo"]},
+  {name:"XY Series",color:"#2ecc71",years:"2014–2016",sets:["Evolutions","McDonald's Collection 2016","Steam Siege","XY - Fates Collide","Generations","BREAKpoint","McDonald's Promos 2015","McDonald's Collection 2015","BREAKthrough","Ancient Origins","Roaring Skies","Double Crisis","Primal Clash","Phantom Forces","Furious Fists","McDonald's Collection 2014","Flashfire","Kalos Starter Set","XY Base Set","XY Promos"]},
+  {name:"Black & White Series",color:"#9b59b6",years:"2011–2013",sets:["Legendary Treasures","Legendary Treasures: Radiant Collections","Plasma Blast","Plasma Freeze","Plasma Storm","Boundaries Crossed","Dragon Vault","Dragons Exalted","Dark Explorers","Next Destinies","Noble Victories","Emerging Powers","Black and White","Black and White Promos","McDonald's Collection 2013","McDonald's Collection 2012","McDonald's Collection 2011"]},
+  {name:"Call of Legends Series",color:"#ab47bc",years:"2011",sets:["Call of Legends"]},
+  {name:"HeartGold SoulSilver Series",color:"#e67e22",years:"2010–2011",sets:["HS Triumphant","Undaunted","HS Unleashed","HeartGold SoulSilver Promos","HeartGold SoulSilver"]},
+  {name:"Platinum Series",color:"#78909c",years:"2009",sets:["Pokemon Rumble","Platinum Arceus","Supreme Victors","Platinum Rising Rivals","Platinum"]},
+  {name:"Nintendo Promo Series",color:"#607d8b",years:"2003–2009",sets:["POP Series 9","POP Series 8","POP Series 7","POP Series 6","POP Series 5","POP Series 4","POP Series 3","POP Series 2","POP Series 1","Nintendo Black Star Promos"]},
+  {name:"Diamond & Pearl Series",color:"#1abc9c",years:"2007–2009",sets:["Stormfront","Legends Awakened","Majestic Dawn","Great Encounters","Secret Wonders","Mysterious Treasures","Diamond and Pearl Promos","Diamond & Pearl"]},
+  {name:"EX Ruby & Sapphire Series",color:"#c0392b",years:"2003–2007",sets:["EX Power Keepers","EX Dragon Frontiers","EX Crystal Guardians","EX Holon Phantoms","EX Legend Maker","EX Delta Species","EX Unseen Forces Unown Collection","EX Unseen Forces","EX Emerald","EX Team Rocket Returns","EX Deoxys","Deoxys","EX FireRed & LeafGreen","FireRed & LeafGreen","EX Hidden Legends","EX Team Magma vs Team Aqua","EX Dragon","Dragon","EX Sandstorm","EX Ruby & Sapphire"]},
+  {name:"e-Card Series",color:"#00b894",years:"2002–2003",sets:["Skyridge","Aquapolis","Best of Game","Expedition"]},
+  {name:"Legendary Collection Series",color:"#6c5ce7",years:"2002",sets:["Legendary Collection"]},
+  {name:"Neo Genesis Series",color:"#8e44ad",years:"2000–2002",sets:["Neo Destiny","Neo Revelation","Southern Islands","Neo Discovery","Neo Genesis"]},
+  {name:"Gym Heroes Series",color:"#d35400",years:"1999–2000",sets:["Gym Challenge","Gym Heroes"]},
+  {name:"Base Set Series",color:"#f1c40f",years:"1999",sets:["Team Rocket","Base Set 2","Fossil","WoTC Promo","Jungle","Base Set"]},
+];
+const SET_TO_ERA={};ERAS.forEach((e,i)=>e.sets.forEach(s=>SET_TO_ERA[s.toLowerCase()]=i));
+function getEraIdx(name){return SET_TO_ERA[name.toLowerCase()]??SET_TO_ERA[(name||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toLowerCase()]}
+
+// ========== SET META ==========
+const SM={"Ancient Origins":{id:"xy7",total:100,logo:"https://images.pokemontcg.io/xy7/logo.png"},"Ascended Heroes":{id:"mega2a",total:217,logo:"https://images.pokemontcg.io/mega2a/logo.png"},"Astral Radiance":{id:"swsh10",total:216,logo:"https://images.pokemontcg.io/swsh10/logo.png"},"Astral Radiance Trainer Gallery":{id:"swsh10tg",total:30,logo:"https://images.pokemontcg.io/swsh10tg/logo.png"},"BREAKpoint":{id:"xy9",total:123,logo:"https://images.pokemontcg.io/xy9/logo.png"},"BREAKthrough":{id:"xy8",total:164,logo:"https://images.pokemontcg.io/xy8/logo.png"},"Base Set 2":{id:"base4",total:130,logo:"https://images.pokemontcg.io/base4/logo.png"},"Battle Styles":{id:"swsh5",total:183,logo:"https://images.pokemontcg.io/swsh5/logo.png"},"Black and White":{id:"bw1",total:115,logo:"https://images.pokemontcg.io/bw1/logo.png"},"Black and White Promos":{id:"bwp",total:101},"Boundaries Crossed":{id:"bw7",total:153,logo:"https://images.pokemontcg.io/bw7/logo.png"},"Brilliant Stars":{id:"swsh9",total:186,logo:"https://images.pokemontcg.io/swsh9/logo.png"},"Brilliant Stars Trainer Gallery":{id:"swsh9tg",total:30,logo:"https://images.pokemontcg.io/swsh9tg/logo.png"},"Burning Shadows":{id:"sm3",total:169,logo:"https://images.pokemontcg.io/sm3/logo.png"},"Celebrations":{id:"cel25",total:25,logo:"https://images.pokemontcg.io/cel25/logo.png"},"Celebrations: Classic Collection":{id:"cel25c",total:25,logo:"https://images.pokemontcg.io/cel25c/logo.png"},"Champion's Path":{id:"swsh35",total:80,logo:"https://images.pokemontcg.io/swsh35/logo.png"},"Chilling Reign":{id:"swsh6",total:233,logo:"https://images.pokemontcg.io/swsh6/logo.png"},"Cosmic Eclipse":{id:"sm12",total:271,logo:"https://images.pokemontcg.io/sm12/logo.png"},"Crimson Invasion":{id:"sm4",total:124,logo:"https://images.pokemontcg.io/sm4/logo.png"},"Crown Zenith":{id:"swsh12pt5",total:159,logo:"https://images.pokemontcg.io/swsh12pt5/logo.png"},"Crown Zenith: Galarian Gallery":{id:"swsh12pt5gg",total:70,logo:"https://images.pokemontcg.io/swsh12pt5gg/logo.png"},"Darkness Ablaze":{id:"swsh3",total:201,logo:"https://images.pokemontcg.io/swsh3/logo.png"},"Destined Rivals":{id:"sv9",total:182,logo:"https://images.pokemontcg.io/sv9/logo.png"},"Detective Pikachu":{id:"det1",total:18,logo:"https://images.pokemontcg.io/det1/logo.png"},"Diamond and Pearl Promos":{id:"dpp",total:56},"Double Crisis":{id:"dc1",total:34,logo:"https://images.pokemontcg.io/dc1/logo.png"},"Dragon Vault":{id:"dv1",total:21,logo:"https://images.pokemontcg.io/dv1/logo.png"},"Dragons Exalted":{id:"bw6",total:128,logo:"https://images.pokemontcg.io/bw6/logo.png"},"EX Dragon":{id:"ex5",total:100,logo:"https://images.pokemontcg.io/ex5/logo.png"},"EX FireRed & LeafGreen":{id:"ex7",total:116,logo:"https://images.pokemontcg.io/ex7/logo.png"},"Evolutions":{id:"xy12",total:113,logo:"https://images.pokemontcg.io/xy12/logo.png"},"Evolving Skies":{id:"swsh7",total:237,logo:"https://images.pokemontcg.io/swsh7/logo.png"},"Flashfire":{id:"xy2",total:109,logo:"https://images.pokemontcg.io/xy2/logo.png"},"Fossil":{id:"base3",total:62,logo:"https://images.pokemontcg.io/base3/logo.png"},"Furious Fists":{id:"xy3",total:114,logo:"https://images.pokemontcg.io/xy3/logo.png"},"Fusion Strike":{id:"swsh8",total:284,logo:"https://images.pokemontcg.io/swsh8/logo.png"},"Generations":{id:"g1",total:83,logo:"https://images.pokemontcg.io/g1/logo.png"},"Generations: Radiant Collection":{id:"g1rc",total:32},"Great Encounters":{id:"dp4",total:106,logo:"https://images.pokemontcg.io/dp4/logo.png"},"Guardians Rising":{id:"sm2",total:169,logo:"https://images.pokemontcg.io/sm2/logo.png"},"Gym Challenge":{id:"gym2",total:132,logo:"https://images.pokemontcg.io/gym2/logo.png"},"Hidden Fates":{id:"sm115",total:69,logo:"https://images.pokemontcg.io/sm115/logo.png"},"Hidden Fates: Shiny Vault":{id:"sma",total:94,logo:"https://images.pokemontcg.io/sma/logo.png"},"Journey Together":{id:"sv8",total:181,logo:"https://images.pokemontcg.io/sv8/logo.png"},"Jungle":{id:"base2",total:64,logo:"https://images.pokemontcg.io/base2/logo.png"},"Kalos Starter Set":{id:"xy0",total:39},"Legendary Treasures":{id:"bw11",total:140,logo:"https://images.pokemontcg.io/bw11/logo.png"},"Legendary Treasures: Radiant Collections":{id:"rc1",total:25},"Lost Origin":{id:"swsh11",total:217,logo:"https://images.pokemontcg.io/swsh11/logo.png"},"Lost Origin Trainer Gallery":{id:"swsh11tg",total:30,logo:"https://images.pokemontcg.io/swsh11tg/logo.png"},"Lost Thunder":{id:"sm8",total:236,logo:"https://images.pokemontcg.io/sm8/logo.png"},"McDonald's 25th Anniversary Promos":{id:null,total:25},"McDonald's Promos 2015":{id:null,total:12},"Mega Evolution":{id:"mega1",total:188,logo:"https://images.pokemontcg.io/mega1/logo.png"},"Neo Genesis":{id:"neo1",total:111,logo:"https://images.pokemontcg.io/neo1/logo.png"},"Next Destinies":{id:"bw4",total:103,logo:"https://images.pokemontcg.io/bw4/logo.png"},"Noble Victories":{id:"bw3",total:102,logo:"https://images.pokemontcg.io/bw3/logo.png"},"Obsidian Flames":{id:"sv3",total:230,logo:"https://images.pokemontcg.io/sv3/logo.png"},"Paldea Evolved":{id:"sv2",total:279,logo:"https://images.pokemontcg.io/sv2/logo.png"},"Paldean Fates":{id:"sv4pt5",total:245,logo:"https://images.pokemontcg.io/sv4pt5/logo.png"},"Paradox Rift":{id:"sv4",total:266,logo:"https://images.pokemontcg.io/sv4/logo.png"},"Phantasmal Flames":{id:"mega2",total:130,logo:"https://images.pokemontcg.io/mega2/logo.png"},"Phantom Forces":{id:"xy4",total:122,logo:"https://images.pokemontcg.io/xy4/logo.png"},"Plasma Blast":{id:"bw10",total:105,logo:"https://images.pokemontcg.io/bw10/logo.png"},"Platinum Arceus":{id:"pl4",total:111,logo:"https://images.pokemontcg.io/pl4/logo.png"},"Pokemon Go":{id:"pgo",total:88,logo:"https://images.pokemontcg.io/pgo/logo.png"},"Primal Clash":{id:"xy5",total:164,logo:"https://images.pokemontcg.io/xy5/logo.png"},"Prismatic Evolutions":{id:"sv8pt5",total:186,logo:"https://images.pokemontcg.io/sv8pt5/logo.png"},"Rebel Clash":{id:"swsh2",total:209,logo:"https://images.pokemontcg.io/swsh2/logo.png"},"Roaring Skies":{id:"xy6",total:110,logo:"https://images.pokemontcg.io/xy6/logo.png"},"SV: 151":{id:"sv3pt5",total:207,logo:"https://images.pokemontcg.io/sv3pt5/logo.png"},"Scarlet & Violet Base Set":{id:"sv1",total:258,logo:"https://images.pokemontcg.io/sv1/logo.png"},"Scarlet & Violet Promo":{id:"svp",total:230},"Shining Fates":{id:"swsh45",total:73,logo:"https://images.pokemontcg.io/swsh45/logo.png"},"Shining Fates: Shiny Vault":{id:"swsh45sv",total:122,logo:"https://images.pokemontcg.io/swsh45sv/logo.png"},"Shining Legends":{id:"sm35",total:78,logo:"https://images.pokemontcg.io/sm35/logo.png"},"Shrouded Fable":{id:"sv6pt5",total:99,logo:"https://images.pokemontcg.io/sv6pt5/logo.png"},"Silver Tempest":{id:"swsh12",total:215,logo:"https://images.pokemontcg.io/swsh12/logo.png"},"Silver Tempest Trainer Gallery":{id:"swsh12tg",total:30,logo:"https://images.pokemontcg.io/swsh12tg/logo.png"},"Steam Siege":{id:"xy11",total:116,logo:"https://images.pokemontcg.io/xy11/logo.png"},"Stellar Crown":{id:"sv7",total:175,logo:"https://images.pokemontcg.io/sv7/logo.png"},"Sun & Moon Base Set":{id:"sm1",total:163,logo:"https://images.pokemontcg.io/sm1/logo.png"},"Sun & Moon Promo":{id:"smp",total:250},"Supreme Victors":{id:"pl3",total:153,logo:"https://images.pokemontcg.io/pl3/logo.png"},"Surging Sparks":{id:"sv7a",total:253,logo:"https://images.pokemontcg.io/sv7a/logo.png"},"Sword & Shield Base Set":{id:"swsh1",total:216,logo:"https://images.pokemontcg.io/swsh1/logo.png"},"Sword & Shield Promo":{id:"swshp",total:320},"Team Rocket":{id:"base5",total:83,logo:"https://images.pokemontcg.io/base5/logo.png"},"Team Up":{id:"sm9",total:196,logo:"https://images.pokemontcg.io/sm9/logo.png"},"Temporal Forces":{id:"sv5",total:218,logo:"https://images.pokemontcg.io/sv5/logo.png"},"Trick or Trade BOOster Bundle 2023":{id:null,total:30},"Twilight Masquerade":{id:"sv6",total:226,logo:"https://images.pokemontcg.io/sv6/logo.png"},"Unbroken Bonds":{id:"sm10",total:234,logo:"https://images.pokemontcg.io/sm10/logo.png"},"Undaunted":{id:"hgss3",total:91,logo:"https://images.pokemontcg.io/hgss3/logo.png"},"Unified Minds":{id:"sm11",total:258,logo:"https://images.pokemontcg.io/sm11/logo.png"},"Vivid Voltage":{id:"swsh4",total:203,logo:"https://images.pokemontcg.io/swsh4/logo.png"},"White Flare":{id:"sv8b",total:86,logo:"https://images.pokemontcg.io/sv8b/logo.png"},"WoTC Promo":{id:"basep",total:54},"XY - Fates Collide":{id:"xy10",total:125,logo:"https://images.pokemontcg.io/xy10/logo.png"},"XY Base Set":{id:"xy1",total:146,logo:"https://images.pokemontcg.io/xy1/logo.png"},"XY Promos":{id:"xyp",total:211}};
+
+// ========== STATE ==========
+let sb=null,ownedCards={},ownedCardsRaw={},globalSetsData=[],lastTab='sets',currentSetData=null,detailFilter='all',cardMemCache={},savedScrollPos=0;
+
+// ========== SUPABASE ==========
+function getSavedConfig(){try{return JSON.parse(localStorage.getItem('poketracker_sb'))}catch{return null}}
+
+async function testAndSaveConfig(){
+  const url=document.getElementById('setupUrl').value.trim(),key=document.getElementById('setupKey').value.trim();
+  const errEl=document.getElementById('setupError'),sucEl=document.getElementById('setupSuccess');
+  errEl.style.display='none';sucEl.style.display='none';
+  if(!url||!key){errEl.textContent='Both fields are required.';errEl.style.display='block';return}
+  document.getElementById('setupBtn').disabled=true;
+  try{
+    const client=window.supabase.createClient(url,key);
+    const{error}=await client.from('set_cache').select('set_id').limit(1);
+    if(error)throw new Error(error.message);
+    localStorage.setItem('poketracker_sb',JSON.stringify({url,key}));
+    sucEl.textContent='Connected! Loading app…';sucEl.style.display='block';
+    setTimeout(()=>initApp(),400);
+  }catch(e){errEl.textContent=`Failed: ${e.message}. Run the schema SQL first.`;errEl.style.display='block'}
+  document.getElementById('setupBtn').disabled=false;
+}
+
+async function initApp(){
+  const cfg=getSavedConfig();if(!cfg)return;
+  document.getElementById('setupScreen').style.display='none';
+  document.getElementById('appMain').style.display='';
+  sb=window.supabase.createClient(cfg.url,cfg.key);
+  await loadAPISets();
+  await loadAllCachedCards();
+  showPrefetchBtn();
+  await loadCollectionFromDB();
+}
+
+// Load only the SET IDs that are cached — not full card data
+// Full card data is lazy-loaded per-set when the user opens one
+async function loadAllCachedCards(){
+  showLoading('Checking cached sets…');
+  try{
+    // Use a summary query — just get distinct set_ids that exist in card_cache
+    // We page through in batches but only fetching set_id (tiny payload)
+    let allRows=[],from=0,batchSize=1000,hasMore=true;
+    while(hasMore){
+      const{data,error}=await sb.from('card_cache').select('set_id').range(from,from+batchSize-1);
+      if(error)throw error;
+      if(data&&data.length>0){allRows=allRows.concat(data);from+=batchSize;}
+      if(!data||data.length<batchSize)hasMore=false;
+    }
+    if(!allRows.length){console.log('No cached sets yet');return}
+    // Mark each set as "cached" in cardMemCache with a sentinel value
+    // Full card data will be fetched from Supabase lazily when a set is opened
+    const cachedSetIds=new Set(allRows.map(r=>r.set_id));
+    for(const id of cachedSetIds){
+      if(!cardMemCache[id])cardMemCache[id]=null; // null = "exists in DB, not yet loaded into memory"
+    }
+    console.log(`Found ${cachedSetIds.size} cached sets in Supabase`);
+  }catch(e){console.error('Failed to check cached sets:',e)}
+}
+
+// Updated getCachedCards — checks cardMemCache sentinel, then loads from Supabase if needed
+async function getCachedCards(setId){
+  // Already fully loaded in memory
+  if(Array.isArray(cardMemCache[setId]))return cardMemCache[setId];
+  // Sentinel: known to exist in Supabase but not yet loaded — fetch now
+  if(cardMemCache[setId]===null){
+    try{
+      let allCards=[],from=0,batchSize=1000,hasMore=true;
+      while(hasMore){
+        const{data,error}=await sb.from('card_cache').select('*').eq('set_id',setId).range(from,from+batchSize-1);
+        if(error)throw error;
+        if(data&&data.length>0){allCards=allCards.concat(data);from+=batchSize}
+        if(!data||data.length<batchSize)hasMore=false;
+      }
+      if(allCards.length>0){
+        const realCards=allCards.filter(r=>r.card_number!=='__empty__');
+        const cards=realCards.map(r=>r.raw_json||{number:r.card_number,name:r.card_name,rarity:r.rarity,images:{small:r.image_small,large:r.image_large},set:{id:r.set_id}});
+        cards.sort((a,b)=>{const na=parseInt(a.number)||0,nb=parseInt(b.number)||0;return na-nb||(a.number||'').localeCompare(b.number||'')});
+        cardMemCache[setId]=cards;
+        return cards;
+      }else{
+        cardMemCache[setId]=[];
+        return [];
+      }
+    }catch(e){console.error(`Failed to load cards for ${setId}:`,e);return null}
+  }
+  // Not in cache at all
+  return null;
+}
+
+// ========== API SET CATALOG ==========
+let apiSetsMap={}; // name (lowercase) → {id, name, total, printedTotal, logo, symbol, releaseDate, series}
+let apiSetsById={}; // id → same object
+
+// Name aliases: CSV name (lowercase) → API name (lowercase)
+const NAME_ALIASES={
+  'sv: 151':'151','scarlet & violet base set':'scarlet & violet','sword & shield base set':'sword & shield',
+  'sun & moon base set':'sun & moon','xy base set':'xy','base set 2':'base set 2',
+  'black and white':'black & white','black and white promos':'bw black star promos',
+  'sword & shield promo':'swsh black star promos','scarlet & violet promo':'sv black star promos',
+  'sun & moon promo':'sm black star promos','xy promos':'xy black star promos',
+  'diamond and pearl promos':'dp black star promos','wotc promo':'wizards black star promos',
+  'xy - fates collide':'fates collide','fates collide':'fates collide',
+  'pokemon go':'pokémon go','ultra prism':'ultra prism','forbidden light':'forbidden light',
+  "mcdonald's 25th anniversary promos":"mcdonald's collection 2021",
+  "mcdonald's promos 2015":"mcdonald's collection 2015",
+  'ex dragon':'dragon','ex firered & leafgreen':'firered & leafgreen',
+  'ex deoxys':'deoxys',
+};
+
+// Japanese/non-English Pokemon sets to skip (Category=Pokemon but not English TCG)
+const JP_SETS=new Set(['ancient roar','battle partners','battle region','clay burst','collect 151 journey',
+  'crimson haze','cyber judge','dark phantasma','double blaze','dragon storm','fairy rise','future flash',
+  'gem pack','gem pack 2','gem pack vol. 3','gem pack vol. 4','glory of team rocket','hot air arena',
+  'incandescent arcana','inferno x','lost abyss','mega dream ex','mask of change','matchless fighter',
+  'mega brave','mega symphonia','night wanderer','paradigm trigger','paradise dragona','pokemon 151',
+  'pokemon go (japanese)','raging surf','ruler of the black flame','scarlet ex','shiny star v',
+  'shiny treasure ex','snow hazard','stellar miracle','super electric breaker',
+  'sword & shield promos (jp)','terastal festival ex','the pokedex','triplet beat','vmax climax',
+  'vstar universe','violet ex','wild force','wild resurgence','shimmering skies',
+  'world championship decks','miscellaneous cards & products','anime 25th collection',
+  'memorial collection','legacy of the master','carrying on his will','dawn of the z-legends',
+  'battle evolution booster','500 years in the future','a fist of divine speed','two legends']);
+
+async function loadAPISets(){
+  showLoading('Loading set catalog…');
+  // 1. Try Supabase cache first
+  try{
+    const{data,error}=await sb.from('set_cache').select('*');
+    if(!error&&data&&data.length>50){
+      // Check age — refresh if older than 24h
+      const oldest=data.reduce((min,r)=>r.cached_at<min?r.cached_at:min,data[0].cached_at);
+      const age=Date.now()-new Date(oldest).getTime();
+      if(age<24*60*60*1000){
+        for(const r of data){
+          const s=r.raw_json||{id:r.set_id,name:r.set_name,total:r.total_cards,printedTotal:r.printed_total,images:{logo:r.logo_url,symbol:r.symbol_url},releaseDate:r.release_date};
+          indexAPISet(s);
+        }
+        console.log(`Loaded ${data.length} sets from Supabase cache`);
+        hideLoading();return;
+      }
+    }
+  }catch(e){console.error('Set cache read error:',e)}
+
+  // 2. Fetch from API
+  try{
+    let allSets=[],page=1,total=Infinity;
+    while(allSets.length<total){
+      const resp=await fetch(`${API}/sets?orderBy=releaseDate&pageSize=250&page=${page}`);
+      if(!resp.ok)throw new Error(`API ${resp.status}`);
+      const json=await resp.json();total=json.totalCount||0;
+      allSets=allSets.concat(json.data||[]);
+      if(!json.data?.length)break;page++;
+    }
+    // Index and cache
+    for(const s of allSets)indexAPISet(s);
+    // Save to Supabase
+    const rows=allSets.map(s=>({
+      set_id:s.id,set_name:s.name,total_cards:s.total,printed_total:s.printedTotal,
+      logo_url:s.images?.logo||null,symbol_url:s.images?.symbol||null,
+      release_date:s.releaseDate||null,raw_json:s
+    }));
+    for(let i=0;i<rows.length;i+=200){
+      await sb.from('set_cache').upsert(rows.slice(i,i+200),{onConflict:'set_id'});
+    }
+    console.log(`Fetched & cached ${allSets.length} sets from API`);
+  }catch(e){
+    console.error('API set fetch failed, using hardcoded fallback:',e);
+    // Fall through — buildGlobalSets will use SM as fallback
+  }
+  hideLoading();
+}
+
+function indexAPISet(s){
+  const obj={id:s.id,name:s.name,total:s.total||s.printedTotal||0,printedTotal:s.printedTotal||s.total||0,
+    logo:s.images?.logo||null,symbol:s.images?.symbol||null,releaseDate:s.releaseDate||'',series:s.series||''};
+  apiSetsMap[s.name.toLowerCase()]=obj;
+  apiSetsById[s.id]=obj;
+}
+
+function findAPISetForCSV(csvName){
+  const lower=csvName.toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  // Direct match
+  if(apiSetsMap[lower])return apiSetsMap[lower];
+  // Normalized direct match (strip accents from API names too)
+  for(const[name,set]of Object.entries(apiSetsMap)){
+    const normName=name.normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+    if(normName===lower)return set;
+  }
+  // Alias match
+  const alias=NAME_ALIASES[lower];
+  if(alias&&apiSetsMap[alias])return apiSetsMap[alias];
+  // Only do substring matching for names that are long enough and specific
+  // Skip fuzzy matching for short names (< 8 chars) to avoid false matches
+  if(lower.length>=8){
+    for(const[name,set]of Object.entries(apiSetsMap)){
+      // Both directions but require the shorter string to be at least 80% of the longer
+      const shorter=Math.min(name.length,lower.length),longer=Math.max(name.length,lower.length);
+      if(shorter/longer<0.7)continue;
+      if(name===lower||(name.includes(lower)&&lower.length>=name.length*0.7)||(lower.includes(name)&&name.length>=lower.length*0.7))return set;
+    }
+  }
+  // Fallback to hardcoded SM
+  const hc=SM[csvName];
+  if(hc)return{id:hc.id,name:csvName,total:hc.total,printedTotal:hc.total,logo:hc.logo||null,symbol:null,releaseDate:'',series:''};
+  return null;
+}
+
+async function loadCollectionFromDB(){
+  showLoading('Loading your collection…');
+  try{
+    // Supabase default limit is 1000 rows — paginate to get all
+    let allData=[],from=0,batchSize=1000,hasMore=true;
+    while(hasMore){
+      const{data,error}=await sb.from('collection').select('set_name,card_number').range(from,from+batchSize-1);
+      if(error)throw error;
+      if(data&&data.length>0){allData=allData.concat(data);from+=batchSize}
+      if(!data||data.length<batchSize)hasMore=false;
+    }
+    if(allData.length>0){
+      ownedCards={};ownedCardsRaw={};
+      for(const r of allData){
+        if(!ownedCards[r.set_name]){ownedCards[r.set_name]=new Set();ownedCardsRaw[r.set_name]=new Set()}
+        const nn=normNum(r.card_number);
+        // Deduplicate: only add if this normalized number hasn't been seen for this set
+        if(!ownedCards[r.set_name].has(nn)){
+          ownedCards[r.set_name].add(nn);
+          ownedCardsRaw[r.set_name].add(r.card_number);
+        }
+      }
+      const uniqueCount=Object.values(ownedCards).reduce((sum,s)=>sum+s.size,0);
+      document.getElementById('uploadStatus').textContent=`${uniqueCount} cards from database`;
+    }else{document.getElementById('uploadStatus').textContent='No collection yet — upload a CSV'}
+  }catch(e){console.error(e);document.getElementById('uploadStatus').textContent='Upload a CSV to start'}
+  buildGlobalSets();
+  showPrefetchBtn();
+  hideLoading();
+}
+
+function showPrefetchBtn(){
+  const allApiSetIds=Object.keys(apiSetsById);
+  // A set is cached if cardMemCache[id] is an array OR null (sentinel = exists in Supabase)
+  const uncachedCount=allApiSetIds.filter(id=>cardMemCache[id]===undefined).length;
+  const cachedCount=allApiSetIds.length-uncachedCount;
+  const btn=document.getElementById('prefetchBtn');
+  const st=document.getElementById('prefetchStatus');
+  if(uncachedCount>0){
+    btn.style.display='';
+    btn.textContent=`⬇ Sync All Sets (${uncachedCount} remaining)`;
+    st.style.display='';
+    st.textContent=`${cachedCount}/${allApiSetIds.length} sets cached`;
+  }else if(allApiSetIds.length>0){
+    btn.style.display='none';
+    st.style.display='';st.textContent=`✓ All ${allApiSetIds.length} sets cached`;
+  }
+}
+
+async function prefetchAllCards(){
+  const btn=document.getElementById('prefetchBtn');
+  const st=document.getElementById('prefetchStatus');
+  btn.disabled=true;btn.style.opacity='0.5';
+  const allApiSetIds=Object.keys(apiSetsById);
+  const uncached=allApiSetIds.filter(id=>cardMemCache[id]===undefined);
+  let done=0,failed=0;const failedNames=[];
+  st.style.display='';st.textContent=`0 / ${uncached.length}`;
+  for(const setId of uncached){
+    const setName=apiSetsById[setId]?.name||setId;
+    try{
+      await fetchSetCards(setId);
+      await new Promise(r=>setTimeout(r,1200));
+    }catch(e){
+      console.error(`Failed: ${setName} (${setId})`,e);
+      failed++;failedNames.push(setName);
+      // Mark as cached (empty) so it doesn't retry forever
+      // User can clear these via "Refresh set catalog" if needed
+      cardMemCache[setId]=[];
+      try{await sb.from('card_cache').upsert([{set_id:setId,card_number:'__empty__',card_name:'Fetch failed - not available on API',rarity:null,image_small:null,image_large:null,raw_json:null}],{onConflict:'set_id,card_number'})}catch(e2){}
+    }
+    done++;
+    st.textContent=`${done}/${uncached.length} — ${setName}`;
+  }
+  const total=allApiSetIds.length;
+  if(failed>0){
+    console.log('Failed sets:',failedNames);
+    st.textContent=`✓ Done! ${failed} sets had no data on API: ${failedNames.join(', ')}`;
+    btn.style.display='none';
+  }else{
+    btn.style.display='none';
+    st.textContent=`✓ All ${total} sets cached!`;
+  }
+  btn.disabled=false;btn.style.opacity='1';
+  if(Object.keys(ownedCards).length>0)buildGlobalSets();
+}
+
+async function saveCollectionToDB(text){
+  showLoading('Saving to Supabase…');
+  const lines=text.split('\n'),hdr=parseCSVLine(lines[0]);
+  const si=hdr.indexOf('Set'),ci=hdr.indexOf('Card Number'),ni=hdr.indexOf('Product Name');
+  const ri=hdr.indexOf('Rarity'),vi=hdr.indexOf('Variance'),coi=hdr.indexOf('Card Condition');
+  const qi=hdr.indexOf('Quantity'),noi=hdr.indexOf('Notes'),cati=hdr.indexOf('Category');
+
+  // Clear old collection — try multiple delete strategies for compatibility
+  let deleteOk=false;
+  try{
+    // Strategy 1: delete with a condition that matches everything
+    const{error:e1}=await sb.from('collection').delete().neq('set_name','');
+    if(!e1){deleteOk=true}else{console.warn('Delete strategy 1 failed:',e1)}
+  }catch(e){console.warn('Delete strategy 1 threw:',e)}
+  if(!deleteOk){
+    try{
+      // Strategy 2: use gte on id
+      const{error:e2}=await sb.from('collection').delete().gte('id',0);
+      if(!e2){deleteOk=true}else{console.warn('Delete strategy 2 failed:',e2)}
+    }catch(e){console.warn('Delete strategy 2 threw:',e)}
+  }
+  if(!deleteOk){
+    try{
+      // Strategy 3: delete in batches by fetching existing rows
+      let hasMore=true;
+      while(hasMore){
+        const{data}=await sb.from('collection').select('id').limit(1000);
+        if(!data||data.length===0){hasMore=false;break}
+        const ids=data.map(r=>r.id);
+        await sb.from('collection').delete().in('id',ids);
+      }
+      deleteOk=true;
+    }catch(e){console.warn('Delete strategy 3 threw:',e)}
+  }
+  if(!deleteOk)console.error('WARNING: Could not clear old collection. New data will be added alongside old data.');
+
+  // Build rows (Pokemon only, no JP sets)
+  const rows=[],seen=new Set();
+  for(let i=1;i<lines.length;i++){
+    if(!lines[i].trim())continue;const c=parseCSVLine(lines[i]);
+    const cat=(c[cati]||'').trim();
+    if(cati>=0&&cat&&cat.toLowerCase()!=='pokemon')continue;
+    const sn=c[si]?.trim(),cn=c[ci]?.trim();if(!sn||!cn)continue;
+    if(JP_SETS.has(sn.toLowerCase()))continue;
+    // Deduplicate: only keep first occurrence of each set+card number (normalized)
+    const dedupKey=sn.toLowerCase()+'|||'+normNum(cn);
+    if(seen.has(dedupKey))continue;
+    seen.add(dedupKey);
+    rows.push({set_name:sn,card_number:cn,product_name:c[ni]?.trim()||null,rarity:c[ri]?.trim()||null,variance:c[vi]?.trim()||null,card_condition:c[coi]?.trim()||null,quantity:parseInt(c[qi])||1,notes:c[noi]?.trim()||null});
+  }
+
+  console.log(`Saving ${rows.length} cards to Supabase… (delete succeeded: ${deleteOk})`);
+  let savedCount=0,failCount=0;
+  for(let i=0;i<rows.length;i+=500){
+    const batch=rows.slice(i,i+500);
+    // Use upsert with conflict handling so rows are saved even if delete partially failed
+    const{error}=await sb.from('collection').upsert(batch,{onConflict:'set_name,card_number',ignoreDuplicates:true});
+    if(error){
+      console.warn(`Batch upsert error (trying insert fallback):`,error);
+      // Fallback: try insert one-by-one
+      for(const row of batch){
+        const{error:e2}=await sb.from('collection').upsert([row],{onConflict:'set_name,card_number',ignoreDuplicates:true});
+        if(!e2)savedCount++;else{
+          // Last resort: plain insert
+          const{error:e3}=await sb.from('collection').insert([row]);
+          if(!e3)savedCount++;else{failCount++;if(failCount<=5)console.error(`Failed: ${row.set_name} #${row.card_number}:`,e3.message)}
+        }
+      }
+    }else{savedCount+=batch.length}
+    document.getElementById('loadingText').textContent=`Saving… ${Math.min(i+500,rows.length)}/${rows.length}`;
+  }
+  console.log(`Saved ${savedCount}/${rows.length} cards to Supabase (${failCount} failures)`);
+  if(failCount>0)console.warn(`${failCount} cards failed to save. Your Supabase 'collection' table may need a unique constraint on (set_name, card_number). Run: ALTER TABLE collection ADD CONSTRAINT collection_set_card_unique UNIQUE (set_name, card_number);`);
+}
+
+// ========== SUPABASE CARD CACHE ==========
+async function cacheCards(setId,apiCards){
+  cardMemCache[setId]=apiCards;
+  try{
+    if(apiCards.length===0){
+      // Store a placeholder so we know this set was checked (0 cards available yet)
+      await sb.from('card_cache').upsert([{set_id:setId,card_number:'__empty__',card_name:'No cards available yet',rarity:null,image_small:null,image_large:null,raw_json:null}],{onConflict:'set_id,card_number'});
+      return;
+    }
+    const rows=apiCards.map(c=>({set_id:setId,card_number:c.number,card_name:c.name,rarity:c.rarity||null,image_small:c.images?.small||null,image_large:c.images?.large||null,raw_json:c}));
+    for(let i=0;i<rows.length;i+=200)await sb.from('card_cache').upsert(rows.slice(i,i+200),{onConflict:'set_id,card_number'});
+  }catch(e){console.error(e)}
+}
+
+// ========== API ==========
+const API='https://api.pokemontcg.io/v2';
+async function fetchSetCards(setId){
+  const cached=await getCachedCards(setId);if(cached)return cached;
+  let all=[],page=1,total=Infinity;
+  while(all.length<total){
+    const resp=await fetch(`${API}/cards?q=set.id:${setId}&orderBy=number&pageSize=250&page=${page}`);
+    if(!resp.ok)throw new Error(`API ${resp.status}`);
+    const json=await resp.json();total=json.totalCount||0;all=all.concat(json.data||[]);
+    if(!json.data?.length)break;page++;
+  }
+  await cacheCards(setId,all);return all;
+}
+
+// ========== CSV ==========
+function parseCSVLine(l){const r=[];let c='',q=false;for(let i=0;i<l.length;i++){const ch=l[i];if(q){if(ch==='"'&&l[i+1]==='"'){c+='"';i++}else if(ch==='"')q=false;else c+=ch}else{if(ch==='"')q=true;else if(ch===','){r.push(c);c=''}else c+=ch}}r.push(c);return r}
+function normNum(n){return(n.split('/')[0].replace(/^0+/,'')||'0').toLowerCase()}
+function parseCSV(t){const ls=t.split('\n'),h=parseCSVLine(ls[0]),si=h.indexOf('Set'),ci=h.indexOf('Card Number'),cati=h.indexOf('Category'),o={},r={};for(let i=1;i<ls.length;i++){if(!ls[i].trim())continue;const c=parseCSVLine(ls[i]);const cat=(c[cati]||'').trim();if(cati>=0&&cat&&cat.toLowerCase()!=='pokemon')continue;const sn=c[si]?.trim(),cn=c[ci]?.trim();if(!sn||!cn)continue;if(JP_SETS.has(sn.toLowerCase()))continue;if(!o[sn]){o[sn]=new Set();r[sn]=new Set()}const nn=normNum(cn);if(!o[sn].has(nn)){o[sn].add(nn);r[sn].add(cn)}}return{owned:o,raw:r}}
+
+function isOwned(ac,os,rs){const n=ac.number;if(os.has(n.toLowerCase())||os.has(normNum(n)))return true;if(rs.has(n))return true;const p=n.padStart(3,'0');if(os.has(p.toLowerCase()))return true;const t=ac.set?.printedTotal||ac.set?.total||'';if(t&&(rs.has(`${p}/${t}`)||rs.has(`${n}/${t}`)))return true;const u=n.toUpperCase();for(const r of rs)if(r.toUpperCase()===u||normNum(r)===normNum(n))return true;return false}
+
+// Sets to hide from the tracker entirely
+const HIDDEN_SETS=new Set(['alternate art promos','generations: radiant collection']);
+// Sets to filter out by partial name match
+const HIDDEN_PATTERNS=[/trainer kit/i];
+
+function isHiddenSet(name){
+  if(!name)return false;
+  const lower=name.toLowerCase();
+  if(HIDDEN_SETS.has(lower))return true;
+  for(const pat of HIDDEN_PATTERNS)if(pat.test(name))return true;
+  return false;
+}
+
+// ========== BUILD ==========
+function buildGlobalSets(){
+  globalSetsData=[];let to=0,ta=0;
+  const addedIds=new Set(); // track API set IDs we've already added
+  const addedNames=new Set(); // track set names to prevent duplicates like Fates Collide
+
+  // 1. Add sets from the user's collection (matched to API where possible)
+  for(const cn of Object.keys(ownedCards)){
+    if(isHiddenSet(cn))continue;
+    const apiSet=findAPISetForCSV(cn);
+    if(apiSet&&isHiddenSet(apiSet.name))continue;
+    const displayName=apiSet?.name||cn;
+    const nameLower=displayName.toLowerCase();
+    if(addedNames.has(nameLower))continue; // skip duplicate set names (e.g. Fates Collide)
+    addedNames.add(nameLower);
+    const oc=ownedCards[cn].size;
+    const tt=apiSet?Math.max(apiSet.total||apiSet.printedTotal||0,oc):oc;
+    const cp=Math.min(oc,tt);
+    globalSetsData.push({
+      name:displayName, csvName:cn,
+      apiId:apiSet?.id||null,
+      logo:apiSet?.logo||null,
+      owned:cp, total:tt,
+      releaseDate:apiSet?.releaseDate||'',
+      eraIdx:getEraIdx(cn)??guessEra(cn,apiSet)
+    });
+    if(apiSet?.id)addedIds.add(apiSet.id);
+    to+=cp;ta+=tt;
+  }
+
+  // 2. Add ALL remaining API sets that the user doesn't own any cards from
+  for(const[id,apiSet] of Object.entries(apiSetsById)){
+    if(addedIds.has(id))continue;
+    if(isHiddenSet(apiSet.name))continue;
+    const nameLower=apiSet.name.toLowerCase();
+    if(addedNames.has(nameLower))continue;
+    addedNames.add(nameLower);
+    const tt=apiSet.total||apiSet.printedTotal||0;
+    globalSetsData.push({
+      name:apiSet.name, csvName:null,
+      apiId:id,
+      logo:apiSet.logo||null,
+      owned:0, total:tt,
+      releaseDate:apiSet.releaseDate||'',
+      eraIdx:getEraIdx(apiSet.name)??guessEra(apiSet.name,apiSet)
+    });
+    ta+=tt;
+  }
+
+  globalSetsData.sort((a,b)=>a.name.localeCompare(b.name));
+  document.getElementById('statSets').textContent=globalSetsData.length;
+  document.getElementById('statOwned').textContent=to.toLocaleString();
+  document.getElementById('statTotal').textContent=ta.toLocaleString();
+  document.getElementById('statPct').textContent=ta>0?Math.round(to/ta*100)+'%':'0%';
+  document.getElementById('uploadStats').style.display='flex';
+  document.getElementById('emptyState').style.display='none';
+  document.getElementById('searchRow').style.display='flex';
+  filterSets();
+}
+
+// Auto-detect era for sets not in the hardcoded ERAS list (new sets)
+function guessEra(csvName,apiSet){
+  if(!apiSet)return ERAS.length-1;
+  const series=(apiSet.series||'').toLowerCase();
+  const name=(apiSet.name||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'');
+  // Explicit overrides for sets that don't match cleanly
+  if(name.includes('pokemon rumble')||name.includes('pokémon rumble'))return ERAS.findIndex(e=>e.name.includes('Platinum'));
+  if(name.includes('futsal'))return ERAS.findIndex(e=>e.name.includes('Sword & Shield'));
+  for(let i=0;i<ERAS.length;i++){
+    const eraName=ERAS[i].name.toLowerCase().replace(' series','');
+    if(series.includes(eraName)||name.includes(eraName))return i;
+    if(eraName.includes('mega evolution')&&(series.includes('mega')||name.includes('mega')))return i;
+    if(eraName.includes('scarlet & violet')&&(series.includes('scarlet')||series.includes('sv')))return i;
+    if(eraName.includes('sword & shield')&&(series.includes('sword')||series.includes('swsh')))return i;
+    if(eraName.includes('sun & moon')&&(series.includes('sun & moon')||series.includes('sm')))return i;
+    if(eraName==='xy'&&(series==='xy'||series.includes('xy')))return i;
+    if(eraName.includes('black & white')&&(series.includes('black')||series.includes('bw')))return i;
+    if(eraName.includes('call of legends')&&series.includes('call of legends'))return i;
+    if(eraName.includes('heartgold')&&(series.includes('heartgold')||series.includes('hgss')))return i;
+    if(eraName.includes('platinum')&&(series.includes('platinum')||name.includes('pokemon rumble')))return i;
+    if(eraName.includes('nintendo promo')&&(series.includes('nintendo')||series.includes('pop')||name.includes('pop series')||name.includes('nintendo')))return i;
+    if(eraName.includes('diamond & pearl')&&(series.includes('diamond')||series.includes('dp')))return i;
+    if(eraName.includes('ex ruby')&&(series.includes('ex')||series.includes('ruby')))return i;
+    if(eraName.includes('e-card')&&(series.includes('e-card')||name.includes('expedition')||name.includes('aquapolis')||name.includes('skyridge')||name.includes('best of game')))return i;
+    if(eraName.includes('legendary collection')&&(series.includes('legendary collection')||name.includes('legendary collection')))return i;
+    if(eraName.includes('neo genesis')&&(series.includes('neo')||name.includes('southern islands')))return i;
+    if(eraName.includes('gym heroes')&&series.includes('gym'))return i;
+    if(eraName.includes('base set')&&(series.includes('base')||series.includes('original')))return i;
+  }
+  return ERAS.length-1;
+}
+
+// ========== UI ==========
+function showLoading(m){document.getElementById('loadingOverlay').classList.remove('hidden');document.getElementById('loadingText').textContent=m}
+function hideLoading(){document.getElementById('loadingOverlay').classList.add('hidden')}
+function bc(p){if(p===100)return'#22c55e';if(p>=75)return'var(--green)';if(p>=40)return'var(--accent)';if(p>=15)return'#f59e0b';return'var(--red)'}
+function pc(p){if(p===100)return'#22c55e';if(p>=75)return'var(--green)';if(p>=40)return'var(--accent)';return'var(--text-primary)'}
+
+// ========== PRICE HELPERS ==========
+function getPrice(card){
+  const tcp=card.tcgplayer?.prices;
+  if(!tcp)return 0;
+  // Try common price variants in order of preference
+  for(const k of ['holofoil','normal','reverseHolofoil','1stEditionHolofoil','1stEditionNormal','unlimitedHolofoil','unlimited']){
+    if(tcp[k]?.market)return tcp[k].market;
+    if(tcp[k]?.mid)return tcp[k].mid;
+  }
+  // Fallback: grab any available market price
+  for(const k of Object.keys(tcp)){if(tcp[k]?.market)return tcp[k].market;if(tcp[k]?.mid)return tcp[k].mid}
+  return 0;
+}
+function fmtPrice(v){return v>=1?`$${v.toFixed(2)}`:(v>0?`$${v.toFixed(2)}`:'—')}
+function fmtPriceShort(v){return v>=1000?`$${(v/1000).toFixed(1)}k`:`$${v.toFixed(2)}`}
+
+// Deduplicate cards by normalized number — returns one card per unique number
+// Cards like 88 and 88a are treated as DIFFERENT cards (not duplicates)
+// But reverse holos of the same number ARE duplicates
+function dedupeCards(cards){
+  const byKey=new Map();
+  for(const c of cards){
+    // Use the raw number as key to preserve 88 vs 88a distinction
+    const rawNum=(c.number||'').trim();
+    if(!byKey.has(rawNum)){byKey.set(rawNum,c)}
+    else{
+      const ex=byKey.get(rawNum);
+      if((ex.rarity||'').toLowerCase().includes('reverse')&&!(c.rarity||'').toLowerCase().includes('reverse'))byKey.set(rawNum,c);
+    }
+  }
+  const result=[...byKey.values()];
+  result.sort(cardSortFn);
+  return result;
+}
+
+// Sort function: numeric cards first in order, then letter-suffix variants (88a), then RC/TG/GG/SV prefix cards at end
+function cardSortFn(a,b){
+  const an=a.number||'',bn=b.number||'';
+  const aIsSpecial=/^(RC|TG|GG|SV)/i.test(an),bIsSpecial=/^(RC|TG|GG|SV)/i.test(bn);
+  if(aIsSpecial!==bIsSpecial)return aIsSpecial?1:-1;
+  const aNum=parseInt(an)||0,bNum=parseInt(bn)||0;
+  if(aNum!==bNum)return aNum-bNum;
+  // Same base number — put letter suffixes (88a) after the plain number (88)
+  const aHasLetter=/\d+[a-z]/i.test(an),bHasLetter=/\d+[a-z]/i.test(bn);
+  if(aHasLetter!==bHasLetter)return aHasLetter?1:-1;
+  return an.localeCompare(bn,undefined,{numeric:true});
+}
+
+function getSetPriceData(s){
+  const rawCards=cardMemCache[s.apiId]||[];
+  const cards=dedupeCards(rawCards);
+  const os=ownedCards[s.csvName]||new Set(),rs=ownedCardsRaw[s.csvName]||new Set();
+  let ownedVal=0,missingVal=0;
+  for(const c of cards){
+    const p=getPrice(c);
+    if(isOwned(c,os,rs))ownedVal+=p;else missingVal+=p;
+  }
+  return{ownedVal,missingVal,totalVal:ownedVal+missingVal};
+}
+
+function tileHTML(s){const p=s.total>0?Math.round(s.owned/s.total*100):0;return`${s.logo?`<img class="set-tile-logo" src="${s.logo}" alt="" loading="lazy" onerror="this.outerHTML='<div class=set-tile-logo-placeholder>🎴</div>'">`:'<div class="set-tile-logo-placeholder">🎴</div>'}<div class="set-tile-name">${s.name}</div><div class="set-tile-pct" style="color:${pc(p)}">${p}%</div><div class="set-tile-bar"><div class="set-tile-bar-fill" style="width:${p}%;background:${bc(p)}"></div></div><div class="set-tile-stats">${s.owned} / ${s.total}</div>`}
+
+function renderEraGrid(data){
+  const ct=document.getElementById('setGridContainer');ct.innerHTML='';
+  const eg={};data.forEach(s=>{const e=s.eraIdx??ERAS.length-1;if(!eg[e])eg[e]=[];eg[e].push(s)});
+  for(const era of ERAS){const ei=ERAS.indexOf(era),sets=eg[ei];if(!sets?.length)continue;
+    // Sort by position in the ERAS sets array to preserve intentional ordering
+    const eraOrder=era.sets.map(n=>n.toLowerCase());
+    sets.sort((a,b)=>{
+      const ai=eraOrder.indexOf(a.name.toLowerCase()),bi=eraOrder.indexOf(b.name.toLowerCase());
+      const aIdx=ai>=0?ai:999,bIdx=bi>=0?bi:999;
+      if(aIdx!==bIdx)return aIdx-bIdx;
+      return a.name.localeCompare(b.name);
+    });
+    const eo=sets.reduce((a,s)=>a+s.owned,0),et=sets.reduce((a,s)=>a+s.total,0),ep=et>0?Math.round(eo/et*100):0;
+    const g=document.createElement('div');g.className='era-group';
+    g.innerHTML=`<div class="era-header"><div class="era-color" style="background:${era.color}"></div><div class="era-name">${era.name}</div>${era.years?`<span style="font-size:12px;color:var(--text-muted)">${era.years}</span>`:''}<div class="era-stats"><span class="era-stats-text">${eo} / ${et}</span><div class="era-bar"><div class="era-bar-fill" style="width:${ep}%;background:${era.color}"></div></div><span class="era-pct" style="color:${era.color}">${ep}%</span></div></div>`;
+    const gr=document.createElement('div');gr.className='set-grid';
+    for(const s of sets){const t=document.createElement('div');t.className='set-tile';t.onclick=()=>openSetDetail(s);t.innerHTML=tileHTML(s);gr.appendChild(t)}
+    g.appendChild(gr);ct.appendChild(g);
+  }
+  if(!ct.children.length)ct.innerHTML='<div style="text-align:center;color:var(--text-muted);padding:40px">No sets match.</div>';
+}
+
+function renderFlatGrid(data){
+  const ct=document.getElementById('setGridContainer');ct.innerHTML='';const g=document.createElement('div');g.className='set-grid';
+  if(!data.length)g.innerHTML='<div style="grid-column:1/-1;text-align:center;color:var(--text-muted);padding:40px">No sets match.</div>';
+  for(const s of data){const t=document.createElement('div');t.className='set-tile';t.onclick=()=>openSetDetail(s);t.innerHTML=tileHTML(s);g.appendChild(t)}
+  ct.appendChild(g);
+}
+
+function renderCompletionTable(data){
+  const b=document.getElementById('completionBody');b.innerHTML='';
+  const rendered=new Set();
+  for(const era of ERAS){const ei=ERAS.indexOf(era),sets=data.filter(s=>s.eraIdx===ei);if(!sets.length)continue;
+    // Sort by position in the ERAS sets array to preserve intentional ordering
+    const eraOrder=era.sets.map(n=>n.toLowerCase());
+    const sorted=[...sets].sort((a,b)=>{
+      const ai=eraOrder.indexOf(a.name.toLowerCase()),bi=eraOrder.indexOf(b.name.toLowerCase());
+      const aIdx=ai>=0?ai:999,bIdx=bi>=0?bi:999;
+      if(aIdx!==bIdx)return aIdx-bIdx;
+      return a.name.localeCompare(b.name);
+    });
+    for(let i=0;i<sorted.length;i++){
+      const s=sorted[i];const m=s.total-s.owned;const p=s.total>0?Math.round(s.owned/s.total*100):0;const c=bc(p);
+      rendered.add(s.name);
+      const tr=document.createElement('tr');tr.onclick=()=>openSetDetail(s);
+      tr.innerHTML=`<td style="color:${era.color};font-weight:600;white-space:nowrap">${i===0?era.name:''}</td><td style="font-weight:600">${s.name}</td><td style="font-family:'Space Mono',monospace;color:var(--text-secondary)">${s.total}</td><td style="font-family:'Space Mono',monospace">${s.owned}</td><td style="font-family:'Space Mono',monospace;color:${m>0?'var(--red)':'var(--green)'}">${m}</td><td style="width:120px"><div class="completion-bar-track"><div class="completion-bar-fill" style="width:${p}%;background:${c}"></div></div></td><td class="completion-pct" style="color:${c};font-family:'Space Mono',monospace;font-weight:700;text-align:right">${p}%</td>`;
+      b.appendChild(tr);
+    }
+  }
+  // Catch any sets not assigned to an era
+  const unmatched=data.filter(s=>!rendered.has(s.name));
+  if(unmatched.length){
+    const sorted=[...unmatched].sort((a,b)=>a.name.localeCompare(b.name));
+    for(let i=0;i<sorted.length;i++){
+      const s=sorted[i];const m=s.total-s.owned;const p=s.total>0?Math.round(s.owned/s.total*100):0;const c=bc(p);
+      const tr=document.createElement('tr');tr.onclick=()=>openSetDetail(s);
+      tr.innerHTML=`<td style="color:var(--text-muted);font-weight:600;white-space:nowrap">${i===0?'Other':''}</td><td style="font-weight:600">${s.name}</td><td style="font-family:'Space Mono',monospace;color:var(--text-secondary)">${s.total}</td><td style="font-family:'Space Mono',monospace">${s.owned}</td><td style="font-family:'Space Mono',monospace;color:${m>0?'var(--red)':'var(--green)'}">${m}</td><td style="width:120px"><div class="completion-bar-track"><div class="completion-bar-fill" style="width:${p}%;background:${c}"></div></div></td><td class="completion-pct" style="color:${c};font-family:'Space Mono',monospace;font-weight:700;text-align:right">${p}%</td>`;
+      b.appendChild(tr);
+    }
+  }
+}
+
+// ========== HUNT TAB ==========
+
+// Pinned cards stored as array of {k, apiId, num, setName}
+// Card objects stored separately in huntPinCardData keyed by pin key
+let huntPins=[];
+const huntPinCardData={};
+function huntPinKey(apiId,num){return apiId+'|'+num}
+function loadHuntPins(){
+  try{huntPins=JSON.parse(localStorage.getItem('poketracker_pins')||'[]')}catch{huntPins=[]}
+  try{
+    const cd=JSON.parse(localStorage.getItem('poketracker_pins_cards')||'{}');
+    Object.assign(huntPinCardData,cd);
+  }catch{}
+}
+function saveHuntPins(){
+  try{localStorage.setItem('poketracker_pins',JSON.stringify(huntPins))}catch{}
+  try{localStorage.setItem('poketracker_pins_cards',JSON.stringify(huntPinCardData))}catch{}
+}
+function isPinned(apiId,num){const k=huntPinKey(apiId,num);return huntPins.some(p=>p.k===k)}
+
+function togglePin(apiId,num,setName){
+  const k=huntPinKey(apiId,num);
+  const idx=huntPins.findIndex(p=>p.k===k);
+  if(idx>=0){
+    huntPins.splice(idx,1);
+    delete huntPinCardData[k];
+  } else {
+    // Card data was stashed in huntPinCardData by buildHuntTile before the onclick fires
+    huntPins.push({k,apiId,num,setName});
+  }
+  saveHuntPins();
+  renderHuntPinned();
+  // Update pin button state everywhere it appears
+  document.querySelectorAll(`.hunt-pin-btn[data-pin-key="${k}"]`).forEach(btn=>{
+    const nowPinned=idx<0;
+    btn.classList.toggle('pinned',nowPinned);
+    btn.title=nowPinned?'Unpin card':'Pin card';
+    btn.textContent=nowPinned?'📌':'📍';
+  });
+}
+function clearAllPins(){huntPins=[];saveHuntPins();renderHuntPinned()}
+
+function renderHuntPinned(){
+  const sec=document.getElementById('huntPinnedSection');
+  const grid=document.getElementById('huntPinnedGrid');
+  if(!huntPins.length){sec.style.display='none';grid.innerHTML='';return}
+  sec.style.display='';
+  grid.innerHTML='';
+  for(const p of huntPins){
+    const card=huntPinCardData[p.k];
+    if(!card)continue;
+    const s=globalSetsData.find(s=>s.apiId===p.apiId)||{name:p.setName,csvName:null,apiId:p.apiId};
+    const os=ownedCards[s.csvName]||new Set(),rs=ownedCardsRaw[s.csvName]||new Set();
+    grid.appendChild(buildHuntTile(card,s,os,rs,true));
+  }
+}
+
+function buildHuntTile(card,set,os,rs,inPinned){
+  const own=isOwned(card,os,rs);
+  const pinned=isPinned(set.apiId,card.number);
+  const price=getPrice(card);
+  const k=huntPinKey(set.apiId,card.number);
+
+  // Always keep card data up-to-date in the side-map so togglePin can find it
+  huntPinCardData[k]=card;
+
+  const tile=document.createElement('div');
+  tile.className=`hunt-card-tile${own?' is-owned':''}${pinned?' is-pinned':''}`;
+
+  const img=card.images?.small||'';
+  const safeN=(card.name||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+  const safeSet=(set.name||'').replace(/'/g,'&#39;').replace(/"/g,'&quot;');
+
+  tile.innerHTML=`
+    <div class="hunt-tile-img-wrap">
+      ${img
+        ? `<img class="hunt-tile-img" src="${img}" alt="${safeN}" loading="lazy" onerror="this.outerHTML='<div class=hunt-tile-img-ph><div class=ph-name>${safeN}</div><div class=ph-num>#${card.number}</div></div>'">`
+        : `<div class="hunt-tile-img-ph"><div class="ph-name">${safeN}</div><div class="ph-num">#${card.number}</div></div>`}
+      <div class="hunt-tile-num-tag">#${card.number}</div>
+      ${own?'<div class="hunt-tile-owned-badge">✓</div>':''}
+      <button class="hunt-pin-btn${pinned?' pinned':''}" data-pin-key="${k}"
+        title="${pinned?'Unpin card':'Pin card'}"
+      >${pinned?'📌':'📍'}</button>
+    </div>
+    <div class="hunt-tile-info">
+      <div class="hunt-tile-name">${card.name||'Unknown'}</div>
+      <div class="hunt-tile-set">${safeSet}</div>
+      ${card.rarity?`<div class="hunt-tile-rarity">${card.rarity}</div>`:''}
+      ${price>0?`<div class="hunt-tile-price">${fmtPrice(price)}</div>`:''}
+      ${card.tcgplayer?.url?`<a class="hunt-tile-tcg-btn" href="${card.tcgplayer.url}" target="_blank" rel="noopener" onclick="event.stopPropagation()">Buy on TCGPlayer ↗</a>`:''}
+    </div>`;
+
+  // Attach pin click via addEventListener — no JSON in HTML attributes
+  tile.querySelector('.hunt-pin-btn').addEventListener('click',e=>{
+    e.stopPropagation();
+    togglePin(set.apiId,card.number,set.name);
+  });
+
+  return tile;
+}
+
+// ---- Filter dropdowns ----
+function populateHuntFilters(){
+  // Era dropdown
+  const eraEl=document.getElementById('huntEraSelect');
+  const prevEra=eraEl.value;
+  eraEl.innerHTML='<option value="">All Eras</option>';
+  ERAS.forEach(e=>{
+    const opt=document.createElement('option');
+    opt.value=e.name;opt.textContent=e.name;eraEl.appendChild(opt);
+  });
+  if(prevEra)eraEl.value=prevEra;
+  onHuntEraChange(true);
+}
+
+function onHuntEraChange(silent){
+  const eraName=document.getElementById('huntEraSelect').value;
+  const setEl=document.getElementById('huntSetSelect');
+  const prevSet=setEl.value;
+  setEl.innerHTML='<option value="">All Sets</option>';
+
+  let sets=globalSetsData;
+  if(eraName){
+    const eraIdx=ERAS.findIndex(e=>e.name===eraName);
+    if(eraIdx>=0)sets=globalSetsData.filter(s=>s.eraIdx===eraIdx);
+  }
+  // Sort by era order, then name
+  sets=[...sets].sort((a,b)=>a.name.localeCompare(b.name));
+  for(const s of sets){
+    const opt=document.createElement('option');
+    opt.value=s.name;opt.textContent=s.name;setEl.appendChild(opt);
+  }
+  if(prevSet&&[...setEl.options].some(o=>o.value===prevSet))setEl.value=prevSet;
+  if(!silent)onHuntSetChange(true);
+}
+
+async function onHuntSetChange(silent){
+  const setName=document.getElementById('huntSetSelect').value;
+  const eraName=document.getElementById('huntEraSelect').value;
+  const rarEl=document.getElementById('huntRaritySelect');
+  const prevRar=rarEl.value;
+
+  // If nothing is narrowed down, just reset to a blank rarity list — don't try to load everything
+  if(!setName&&!eraName){
+    rarEl.innerHTML='<option value="">All Rarities</option>';
+    return;
+  }
+
+  rarEl.innerHTML='<option value="">Loading rarities…</option>';
+  rarEl.disabled=true;
+
+  // Determine which sets to scan
+  let setsToScan=globalSetsData;
+  if(setName)setsToScan=globalSetsData.filter(s=>s.name===setName);
+  else if(eraName){const ei=ERAS.findIndex(e=>e.name===eraName);if(ei>=0)setsToScan=globalSetsData.filter(s=>s.eraIdx===ei)}
+
+  // Load cards into memory for any set that has the null sentinel (exists in Supabase but not yet fetched)
+  for(const s of setsToScan){
+    if(s.apiId&&cardMemCache[s.apiId]===null){
+      try{await getCachedCards(s.apiId)}catch(e){console.warn('Could not load cards for rarity scan:',s.name,e)}
+    }
+  }
+
+  // Now collect rarities from in-memory cards
+  const raritySet=new Set();
+  for(const s of setsToScan){
+    const cards=Array.isArray(cardMemCache[s.apiId])?cardMemCache[s.apiId]:[];
+    for(const c of cards){if(c.rarity)raritySet.add(c.rarity)}
+  }
+
+  rarEl.disabled=false;
+  rarEl.innerHTML='<option value="">All Rarities</option>';
+  const sorted=[...raritySet].sort();
+  for(const r of sorted){
+    const opt=document.createElement('option');opt.value=r;opt.textContent=r;rarEl.appendChild(opt);
+  }
+  if(prevRar&&sorted.includes(prevRar))rarEl.value=prevRar;
+}
+
+async function runHunt(){
+  const eraName=document.getElementById('huntEraSelect').value;
+  const setName=document.getElementById('huntSetSelect').value;
+  const rarity=document.getElementById('huntRaritySelect').value;
+  const status=document.getElementById('huntStatusSelect').value;
+
+  const placeholder=document.getElementById('huntPlaceholder');
+  const emptyState=document.getElementById('huntEmptyState');
+  const resultsSec=document.getElementById('huntResultsSection');
+  const grid=document.getElementById('huntResultsGrid');
+
+  placeholder.style.display='none';
+  emptyState.style.display='none';
+  resultsSec.style.display='none';
+  grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-secondary)"><div class="spinner" style="margin:0 auto 12px"></div>Searching…</div>';
+  resultsSec.style.display='block';
+
+  // ---- Pinned mode: show only pinned cards, skip other filters ----
+  if(status==='pinned'){
+    const allCards=[];
+    for(const p of huntPins){
+      const card=huntPinCardData[p.k];
+      if(!card)continue;
+      const s=globalSetsData.find(s=>s.apiId===p.apiId)||{name:p.setName,csvName:null,apiId:p.apiId};
+      const os=ownedCards[s.csvName]||new Set(),rs=ownedCardsRaw[s.csvName]||new Set();
+      allCards.push({card,set:s,os,rs});
+    }
+    grid.innerHTML='';
+    if(!allCards.length){
+      resultsSec.style.display='none';
+      emptyState.style.display='';
+      return;
+    }
+    document.getElementById('huntResultsTitle').textContent='📌 Pinned Cards';
+    document.getElementById('huntResultsCount').textContent=allCards.length+' card'+(allCards.length!==1?'s':'');
+    for(const{card,set,os,rs} of allCards)grid.appendChild(buildHuntTile(card,set,os,rs,false));
+    return;
+  }
+
+  // Determine sets to scan
+  let setsToSearch=globalSetsData;
+  if(setName){
+    setsToSearch=globalSetsData.filter(s=>s.name===setName);
+  }else if(eraName){
+    const ei=ERAS.findIndex(e=>e.name===eraName);
+    if(ei>=0)setsToSearch=globalSetsData.filter(s=>s.eraIdx===ei);
+  }
+
+  // Collect cards
+  const allCards=[];
+  for(const s of setsToSearch){
+    if(!s.apiId)continue;
+    let cards=Array.isArray(cardMemCache[s.apiId])?cardMemCache[s.apiId]:null;
+    if(!cards&&cardMemCache[s.apiId]===null){
+      try{cards=await getCachedCards(s.apiId)}catch(e){cards=null}
+    }
+    if(!cards||!cards.length)continue;
+    const deduped=dedupeCards(cards);
+    const os=ownedCards[s.csvName]||new Set(),rs=ownedCardsRaw[s.csvName]||new Set();
+    for(const c of deduped){
+      if(rarity&&c.rarity!==rarity)continue;
+      const own=isOwned(c,os,rs);
+      if(status==='missing'&&own)continue;
+      if(status==='owned'&&!own)continue;
+      allCards.push({card:c,set:s,os,rs});
+    }
+  }
+
+  grid.innerHTML='';
+  if(!allCards.length){
+    resultsSec.style.display='none';
+    emptyState.style.display='';
+    return;
+  }
+
+  // Build label
+  const parts=[];
+  if(rarity)parts.push(rarity);
+  if(setName)parts.push('· '+setName);else if(eraName)parts.push('· '+eraName);
+  const statusLabel=status==='missing'?' (Missing)':status==='owned'?' (Owned)':'';
+  document.getElementById('huntResultsTitle').textContent=(parts.join(' ')||'All Cards')+statusLabel;
+  document.getElementById('huntResultsCount').textContent=allCards.length+' card'+(allCards.length!==1?'s':'');
+
+  for(const{card,set,os,rs} of allCards){
+    grid.appendChild(buildHuntTile(card,set,os,rs,false));
+  }
+}
+
+function filterSets(){
+  const q=document.getElementById('searchInput').value.toLowerCase(),sort=document.getElementById('sortSelect').value;
+  let f=globalSetsData.filter(s=>s.name.toLowerCase().includes(q));
+  if(sort==='era'){f.sort((a,b)=>{if(a.eraIdx!==b.eraIdx)return a.eraIdx-b.eraIdx;const ra=a.releaseDate||'',rb=b.releaseDate||'';if(ra&&rb)return rb.localeCompare(ra);if(ra)return-1;if(rb)return 1;return a.name.localeCompare(b.name)});renderEraGrid(f)}
+  else{f.sort((a,b)=>{const pa=a.total?a.owned/a.total:0,pb=b.total?b.owned/b.total:0;switch(sort){case'name-asc':return a.name.localeCompare(b.name);case'pct-asc':return pa-pb;case'pct-desc':return pb-pa;case'missing-desc':return(b.total-b.owned)-(a.total-a.owned);default:return 0}});renderFlatGrid(f)}
+  renderCompletionTable(f);
+}
+
+// ========== DETAIL ==========
+async function openSetDetail(s){
+  currentSetData=s;detailFilter='all';
+  savedScrollPos=window.scrollY;
+  document.querySelectorAll('.detail-filters .pill').forEach(p=>p.classList.remove('active'));
+  document.querySelector('.pill[data-filter="all"]').classList.add('active');
+  document.getElementById('setsView').style.display='none';document.getElementById('completionView').style.display='none';
+  document.getElementById('setDetail').style.display='block';document.getElementById('searchRow').style.display='none';
+  document.getElementById('detailTitle').textContent=s.name;document.getElementById('detailOwned').textContent=s.owned;
+  document.getElementById('detailTotal').textContent=s.total;document.getElementById('detailMissing').textContent=s.total-s.owned;
+  const logo=document.getElementById('detailLogo');if(s.logo){logo.src=s.logo;logo.style.display=''}else logo.style.display='none';
+  const grid=document.getElementById('cardGrid');
+  if(s.apiId){
+    grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:60px 20px;color:var(--text-secondary)"><div class="spinner" style="margin:0 auto 16px"></div>Loading cards…<br><small style="color:var(--text-muted)">Checking Supabase cache, then API</small></div>';
+    try{const cards=await fetchSetCards(s.apiId);renderCards(cards,s)}
+    catch(e){console.error(e);grid.innerHTML='<div style="grid-column:1/-1;text-align:center;padding:40px;color:var(--text-muted)"><div style="font-size:32px;margin-bottom:12px">⚠️</div>Could not load cards.<br><small>Check internet for first-time loads.</small><br><br><button onclick="renderFallback()" style="padding:8px 20px;border-radius:8px;border:1px solid var(--accent);background:transparent;color:var(--accent);cursor:pointer;font-family:Outfit,sans-serif">Text-only list</button></div>'}
+  }else renderFallback();
+}
+
+function renderCards(ac,s){
+  const grid=document.getElementById('cardGrid');grid.innerHTML='';
+  const os=ownedCards[s.csvName]||new Set(),rs=ownedCardsRaw[s.csvName]||new Set();
+
+  // Deduplicate cards by exact number — keep only one version per card number
+  // 88 and 88a are treated as different cards; reverse holos of 88 are duplicates of 88
+  const dedupedCards=dedupeCards(ac);
+
+  let oc=0,ownedVal=0,missingVal=0;
+  for(const c of dedupedCards){const p=getPrice(c);if(isOwned(c,os,rs)){oc++;ownedVal+=p}else{missingVal+=p}}
+  document.getElementById('detailOwned').textContent=oc;document.getElementById('detailTotal').textContent=dedupedCards.length;document.getElementById('detailMissing').textContent=dedupedCards.length-oc;
+  document.getElementById('detailOwnedVal').textContent=fmtPrice(ownedVal);
+  document.getElementById('detailMissingVal').textContent=fmtPrice(missingVal);
+  document.getElementById('detailSetVal').textContent=fmtPrice(ownedVal+missingVal);
+
+  let cards=[...dedupedCards];
+  if(detailFilter==='missing')cards=cards.filter(c=>!isOwned(c,os,rs));
+  if(detailFilter==='owned')cards=cards.filter(c=>isOwned(c,os,rs));
+
+  // Sort
+  const sortBy=document.getElementById('detailSortSelect')?.value||'number';
+  if(sortBy==='price-desc')cards.sort((a,b)=>getPrice(b)-getPrice(a));
+  else if(sortBy==='price-asc')cards.sort((a,b)=>getPrice(a)-getPrice(b));
+  else if(sortBy==='name')cards.sort((a,b)=>(a.name||'').localeCompare(b.name||''));
+  else cards.sort(cardSortFn);
+
+  if(!cards.length){grid.innerHTML=`<div style="width:100%;text-align:center;color:var(--text-muted);padding:40px;font-size:16px">${detailFilter==='missing'&&oc===dedupedCards.length?'🎉 Set complete!':detailFilter==='owned'&&oc===0?'No owned cards in this set yet.':'No cards to show.'}</div>`;return}
+
+  // Render in 9-card binder pages
+  const pageSize=9;
+  for(let p=0;p<cards.length;p+=pageSize){
+    const page=document.createElement('div');
+    page.className='binder-page';
+    const pageNum=Math.floor(p/pageSize)+1;
+    const totalPages=Math.ceil(cards.length/pageSize);
+    page.innerHTML=`<div class="binder-page-label">Page ${pageNum} of ${totalPages}</div>`;
+    const pageCards=cards.slice(p,p+pageSize);
+    for(const c of pageCards){
+      const own=isOwned(c,os,rs),d=document.createElement('div');d.className=`card-item ${own?'owned':'missing'}`;
+      const img=c.images?.small||'',sn=(c.name||'').replace(/'/g,"\\'").replace(/"/g,'&quot;');
+      const price=getPrice(c);const priceHtml=price>0?`<div class="card-price">${fmtPrice(price)}</div>`:'';
+      const numTag=`<div class="card-number-tag">#${c.number}</div>`;
+      d.innerHTML=img?`${numTag}<img class="card-img" src="${img}" alt="${sn}" loading="lazy" onerror="this.outerHTML=ph('${sn}','${c.number}')">${priceHtml}<div class="card-info"><div class="card-name">${c.name}</div><div class="card-num">#${c.number} · ${c.rarity||''}${price>0?' · '+fmtPrice(price):''}</div></div>`:`${numTag}${ph(c.name,c.number)}`;
+      page.appendChild(d);
+    }
+    // Fill remaining slots with empty placeholders if last page has < 9 cards
+    for(let e=pageCards.length;e<pageSize;e++){
+      const empty=document.createElement('div');
+      empty.style.cssText='aspect-ratio:2.5/3.5;border:1px dashed rgba(255,255,255,0.06);border-radius:8px;opacity:0.3';
+      page.appendChild(empty);
+    }
+    grid.appendChild(page);
+  }
+}
+
+function rerenderDetail(){
+  if(currentSetData?.apiId&&cardMemCache[currentSetData.apiId])renderCards(cardMemCache[currentSetData.apiId],currentSetData);
+}
+
+function ph(n,num){return`<div class="card-img-placeholder"><div class="cp-name">${n}</div><div class="cp-num">#${num}</div></div>`}
+
+function renderFallback(){
+  if(!currentSetData)return;const grid=document.getElementById('cardGrid');grid.innerHTML='';
+  const rs=ownedCardsRaw[currentSetData.csvName]||new Set();
+  if(!rs.size){grid.innerHTML='<div style="width:100%;text-align:center;color:var(--text-muted);padding:40px">No data.</div>';return}
+  const sorted=[...rs].sort((a,b)=>a.localeCompare(b,undefined,{numeric:true}));
+  for(let p=0;p<sorted.length;p+=9){
+    const page=document.createElement('div');page.className='binder-page';
+    page.innerHTML=`<div class="binder-page-label">Page ${Math.floor(p/9)+1} of ${Math.ceil(sorted.length/9)}</div>`;
+    const slice=sorted.slice(p,p+9);
+    for(const n of slice){const d=document.createElement('div');d.className='card-item owned';d.innerHTML=`<div class="card-number-tag">#${n}</div>${ph('Owned',''+n)}`;page.appendChild(d)}
+    for(let e=slice.length;e<9;e++){const empty=document.createElement('div');empty.style.cssText='aspect-ratio:2.5/3.5;border:1px dashed rgba(255,255,255,0.06);border-radius:8px;opacity:0.3';page.appendChild(empty)}
+    grid.appendChild(page);
+  }
+}
+
+function setDetailFilter(f,el){
+  detailFilter=f;document.querySelectorAll('.detail-filters .pill').forEach(p=>p.classList.remove('active'));el.classList.add('active');
+  rerenderDetail();
+}
+
+// ========== NAV ==========
+function switchTab(v){lastTab=v;document.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));document.querySelector(`.tab[data-view="${v}"]`).classList.add('active');document.getElementById('setsView').style.display=v==='sets'?'':'none';document.getElementById('completionView').style.display=v==='completion'?'block':'none';document.getElementById('huntView').style.display=v==='hunt'?'block':'none';document.getElementById('setDetail').style.display='none';document.getElementById('searchRow').style.display=(globalSetsData.length&&v!=='hunt')?'flex':'none';if(v==='completion')filterSets();if(v==='hunt'){populateHuntFilters();renderHuntPinned()}}
+function showSetsView(){switchTab('sets')}function goBack(){switchTab(lastTab);setTimeout(()=>window.scrollTo(0,savedScrollPos),50)}
+
+async function handleCSV(ev){
+  const f=ev.target.files[0];if(!f)return;showLoading('Parsing CSV…');
+  const text=await f.text(),{owned,raw}=parseCSV(text);ownedCards=owned;ownedCardsRaw=raw;
+  await saveCollectionToDB(text);buildGlobalSets();
+  document.getElementById('uploadStatus').textContent=`✓ ${f.name}`;showPrefetchBtn();hideLoading();
+}
+
+window.addEventListener('DOMContentLoaded',()=>{loadHuntPins();if(getSavedConfig()){document.getElementById('setupScreen').style.display='none';initApp()}});
+
+async function refreshSetCatalog(){
+  if(!sb){alert('Connect to Supabase first.');return}
+  try{await sb.from('set_cache').delete().neq('set_id','')}catch(e){console.error(e)}
+  apiSetsMap={};apiSetsById={};
+  await loadAPISets();
+  if(Object.keys(ownedCards).length>0){buildGlobalSets();showPrefetchBtn()}
+  alert('Set catalog refreshed from API!');
+}
+
+async function resyncCardCache(){
+  if(!sb){alert('Connect to Supabase first.');return}
+  if(!confirm('This will clear ALL cached card data and re-fetch from the API. This will take several minutes. Continue?'))return;
+  showLoading('Clearing card cache…');
+  try{
+    // Delete all card cache data from Supabase
+    let hasMore=true;
+    while(hasMore){
+      const{data,error}=await sb.from('card_cache').select('set_id,card_number').limit(1000);
+      if(error)throw error;
+      if(!data||data.length===0){hasMore=false;break}
+      // Delete in batches by set_id
+      const setIds=[...new Set(data.map(r=>r.set_id))];
+      for(const sid of setIds){
+        await sb.from('card_cache').delete().eq('set_id',sid);
+      }
+      document.getElementById('loadingText').textContent=`Clearing… ${setIds.length} sets removed`;
+    }
+  }catch(e){console.error('Clear error:',e)}
+  // Clear in-memory cache
+  cardMemCache={};
+  hideLoading();
+  // Now trigger sync
+  showPrefetchBtn();
+  alert('Card cache cleared! Click "Sync All Sets" to re-fetch with price data.');
+}
+</script>
+</body>
+</html>

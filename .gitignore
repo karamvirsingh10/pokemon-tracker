@@ -1,0 +1,5 @@
+# Environment variables (contains API keys — never commit this)
+.env
+
+# Claude settings (local overrides)
+.claude/settings.local.json
